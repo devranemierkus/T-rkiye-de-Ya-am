@@ -1,13 +1,15 @@
-<!DOCTYPE html><html lang="tr">
+<!DOCTYPE html>
+<html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>TC Yaşam Simülasyonu</title>
+  <title>TC Yaşam Simülasyonu V2.0</title>
   <style>
     html, body {
       margin: 0;
       overflow: hidden;
       background: #000;
-      font-family: sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #eee;
     }
     #ui {
       position: absolute;
@@ -15,35 +17,119 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: rgba(0,0,0,0.85);
+      background: rgba(0,0,0,0.9);
       color: #fff;
       padding: 30px;
+      box-sizing: border-box;
       z-index: 10;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
     }
-    input, select, button {
+    h1 {
+      color: #4CAF50;
+      margin-bottom: 20px;
+    }
+    label {
       display: block;
       margin: 10px 0;
-      padding: 10px;
+      font-size: 1.1rem;
+      width: 100%;
+      max-width: 400px;
+      text-align: left;
+    }
+    input, select {
+      display: block;
+      margin-top: 5px;
+      padding: 12px;
       font-size: 1rem;
       width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #555;
+      background: #333;
+      color: #fff;
+      border-radius: 5px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 15px 25px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1.1rem;
+      margin-top: 20px;
+      transition: background-color 0.3s ease;
       max-width: 300px;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #45a049;
     }
     canvas { display: block; }
-    #info {
+    #info, #event-overlay {
       position: absolute;
-      bottom: 10px;
-      left: 10px;
+      background: rgba(0,0,0,0.7);
+      padding: 15px;
+      font-size: 16px;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,255,0,0.3);
+      border: 1px solid #4CAF50;
+    }
+    #info {
+      bottom: 20px;
+      left: 20px;
+      width: 300px;
+    }
+    #event-overlay {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80%;
+      max-width: 600px;
+      text-align: center;
+      display: none; /* Hidden by default */
+    }
+    #event-overlay h2 {
+      color: #FFEB3B;
+      margin-top: 0;
+    }
+    #event-overlay p {
+      margin-bottom: 20px;
+    }
+    #event-overlay button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      max-width: unset;
+      width: auto;
+    }
+    .option-button {
+      background-color: #2196F3;
+    }
+    .option-button:hover {
+      background-color: #1976D2;
+    }
+    #military-info {
+      position: absolute;
+      top: 20px;
+      right: 20px;
       color: white;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0,0,0,0.7);
       padding: 10px;
       font-size: 14px;
       border-radius: 5px;
+      display: none; /* Hidden until military service starts */
     }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>  <div id="ui">
-    <h1>🍼 Doğum Simülasyonu</h1>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="ui">
+    <h1>🍼 TC Yaşam Simülasyonu 🇹🇷</h1>
     <label>Ad: <input id="name" placeholder="Adını gir"></label>
     <label>Soyad: <input id="surname" placeholder="Soyadını gir"></label>
     <label>Doğum Yılı: <input type="number" id="year" value="2025"></label>
@@ -61,63 +147,241 @@
         <option value="islam">İslam</option>
         <option value="hristiyan">Hristiyanlık</option>
         <option value="yahudi">Yahudilik</option>
+        <option value="budist">Budizm</option>
       </select>
     </label>
     <button onclick="startLife()">Hayata Başla</button>
-  </div>  <div id="info"></div><audio id="cry" src="https://www.soundjay.com/human/sounds/baby-crying-01.mp3"></audio> <audio id="voiceMom" src="https://www.soundjay.com/human/sounds/female-voice-01.mp3"></audio> <audio id="voiceDad" src="https://www.soundjay.com/human/sounds/male-voice-01.mp3"></audio>
+  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>  <script>
+  <div id="info"></div>
+  <div id="event-overlay">
+    <h2 id="event-title"></h2>
+    <p id="event-message"></p>
+    <div id="event-options"></div>
+  </div>
+  <div id="military-info">
+    <p>Şafak Sayacı: <span id="safak-counter"></span> gün</p>
+    <p>Askerlik Durumu: <span id="military-status"></span></p>
+  </div>
+
+  <audio id="cry" src="https://www.soundjay.com/human/sounds/baby-crying-01.mp3"></audio>
+  <audio id="voiceMom" src="https://www.soundjay.com/human/sounds/female-voice-01.mp3"></audio>
+  <audio id="voiceDad" src="https://www.soundjay.com/human/sounds/male-voice-01.mp3"></audio>
+  <audio id="explosion" src="https://www.soundjay.com/misc/sounds/explosion-01.mp3"></audio>
+  <audio id="carHorn" src="https://www.soundjay.com/vehicles/sounds/car-horn-01.mp3"></audio>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+  <script>
+    // --- Three.js Setup ---
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gameCanvas") });
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gameCanvas"), antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.position.set(0, 1.6, 5);
+    renderer.setClearColor(0x333333); // A darker, more modern background
+    camera.position.set(0, 2, 8); // Slightly higher and further back for a better view
 
-    const light = new THREE.PointLight(0xffffff, 1);
-    light.position.set(5, 5, 5);
-    scene.add(light);
+    const ambientLight = new THREE.AmbientLight(0x404040, 2); // Soft ambient light
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    directionalLight.position.set(5, 10, 7);
+    directionalLight.castShadow = true;
+    scene.add(directionalLight);
 
-    const baby = new THREE.Mesh(
-      new THREE.SphereGeometry(0.4, 32, 32),
-      new THREE.MeshStandardMaterial({ color: 0xffccaa })
+    // Ground plane
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(50, 50),
+      new THREE.MeshStandardMaterial({ color: 0x228B22, side: THREE.DoubleSide })
     );
-    baby.position.y = 0.5;
+    plane.rotation.x = Math.PI / 2;
+    plane.receiveShadow = true;
+    scene.add(plane);
 
-    const bed = new THREE.Mesh(
-      new THREE.BoxGeometry(2, 0.2, 1),
-      new THREE.MeshStandardMaterial({ color: 0x8b4513 })
-    );
-    bed.position.y = 0;
+    // Placeholder objects (can be replaced with more complex models later)
+    let playerObject, currentEnvironment;
 
-    const mom = new THREE.Mesh(
-      new THREE.SphereGeometry(0.4, 32, 32),
-      new THREE.MeshStandardMaterial({ color: 0xffaaaa })
-    );
-    mom.position.set(-1, 1.2, 0);
+    function createBirthScene() {
+      // Clear previous scene elements
+      scene.children = scene.children.filter(obj => obj === ambientLight || obj === directionalLight || obj === plane);
 
-    const dad = new THREE.Mesh(
-      new THREE.SphereGeometry(0.4, 32, 32),
-      new THREE.MeshStandardMaterial({ color: 0xaaaaff })
-    );
-    dad.position.set(1, 1.2, 0);
+      const baby = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 32, 32),
+        new THREE.MeshStandardMaterial({ color: 0xffccaa, roughness: 0.7, metalness: 0.1 })
+      );
+      baby.position.y = 0.5;
+      baby.name = "baby";
+      scene.add(baby);
 
-    const eyes = new THREE.Mesh(
-      new THREE.BoxGeometry(0.05, 0.05, 0.01),
-      new THREE.MeshStandardMaterial({ color: 0x000000 })
-    );
-    eyes.position.set(0.1, 0.05, 0.4);
-    const mouth = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1, 0.02, 0.01),
-      new THREE.MeshStandardMaterial({ color: 0x000000 })
-    );
-    mouth.position.set(0, -0.1, 0.4);
-    baby.add(eyes);
-    baby.add(mouth);
+      const bed = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.2, 1),
+        new THREE.MeshStandardMaterial({ color: 0x8b4513, roughness: 0.8 })
+      );
+      bed.position.y = 0;
+      scene.add(bed);
 
-    scene.add(baby);
-    scene.add(bed);
-    scene.add(mom);
-    scene.add(dad);
+      const mom = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 32, 32),
+        new THREE.MeshStandardMaterial({ color: 0xffaaaa, roughness: 0.7, metalness: 0.1 })
+      );
+      mom.position.set(-1.5, 1.2, 0);
+      mom.name = "mom";
+      scene.add(mom);
+
+      const dad = new THREE.Mesh(
+        new THREE.SphereGeometry(0.4, 32, 32),
+        new THREE.MeshStandardMaterial({ color: 0xaaaaff, roughness: 0.7, metalness: 0.1 })
+      );
+      dad.position.set(1.5, 1.2, 0);
+      dad.name = "dad";
+      scene.add(dad);
+
+      // Simple eyes and mouth for baby
+      const eyeGeometry = new THREE.SphereGeometry(0.03, 16, 16);
+      const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+      const leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      leftEye.position.set(-0.1, 0.1, 0.38);
+      baby.add(leftEye);
+      const rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+      rightEye.position.set(0.1, 0.1, 0.38);
+      baby.add(rightEye);
+
+      const mouthGeometry = new THREE.BoxGeometry(0.15, 0.03, 0.01);
+      const mouth = new THREE.Mesh(mouthGeometry, eyeMaterial);
+      mouth.position.set(0, -0.05, 0.38);
+      baby.add(mouth);
+
+      currentEnvironment = "birth";
+    }
+
+    function createHomeScene() {
+      // Clear previous scene elements but keep lights and ground
+      scene.children = scene.children.filter(obj => obj === ambientLight || obj === directionalLight || obj === plane);
+
+      // Room elements
+      const wallsMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, side: THREE.BackSide });
+      const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x663300 });
+
+      const walls = new THREE.Mesh(new THREE.BoxGeometry(10, 5, 10), wallsMaterial);
+      walls.position.y = 2.5;
+      scene.add(walls);
+
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(10, 0.1, 10), floorMaterial);
+      floor.position.y = -0.05;
+      scene.add(floor);
+
+      // Player representation
+      playerObject = new THREE.Mesh(
+        new THREE.CapsuleGeometry(0.4, 1.0, 32, 32), // More human-like capsule
+        new THREE.MeshStandardMaterial({ color: 0xffffcc, roughness: 0.6 })
+      );
+      playerObject.position.set(0, 0.8, 0); // Position it on the floor
+      playerObject.castShadow = true;
+      scene.add(playerObject);
+
+      // Simple furniture
+      const table = new THREE.Mesh(
+        new THREE.BoxGeometry(1.5, 0.7, 0.8),
+        new THREE.MeshStandardMaterial({ color: 0x552200 })
+      );
+      table.position.set(2, 0.35, -2);
+      scene.add(table);
+
+      const chair = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.8, 0.5),
+        new THREE.MeshStandardMaterial({ color: 0x774411 })
+      );
+      chair.position.set(2, 0.4, -1.5);
+      scene.add(chair);
+
+      currentEnvironment = "home";
+    }
+
+    function createMilitaryScene() {
+      scene.children = scene.children.filter(obj => obj === ambientLight || obj === directionalLight || obj === plane);
+
+      // Barracks/Training Ground feel
+      const barracksWall = new THREE.Mesh(
+        new THREE.BoxGeometry(10, 3, 0.5),
+        new THREE.MeshStandardMaterial({ color: 0x666666 })
+      );
+      barracksWall.position.set(0, 1.5, -4);
+      scene.add(barracksWall);
+
+      const tent = new THREE.Mesh(
+        new THREE.ConeGeometry(1.5, 2, 4),
+        new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+      );
+      tent.position.set(3, 1, 0);
+      scene.add(tent);
+
+      if (playerObject) {
+        playerObject.position.set(-2, 0.8, 2);
+      }
+      scene.add(playerObject); // Re-add player to new scene
+
+      currentEnvironment = "military";
+    }
+
+    function createCityScene() {
+      scene.children = scene.children.filter(obj => obj === ambientLight || obj === directionalLight || obj === plane);
+
+      // Simple buildings
+      const buildingMaterial = new THREE.MeshStandardMaterial({ color: 0x999999 });
+      for (let i = 0; i < 5; i++) {
+        const height = Math.random() * 5 + 3;
+        const building = new THREE.Mesh(
+          new THREE.BoxGeometry(Math.random() * 2 + 1, height, Math.random() * 2 + 1),
+          buildingMaterial
+        );
+        building.position.set(Math.random() * 10 - 5, height / 2, Math.random() * 10 - 5);
+        scene.add(building);
+      }
+
+      // Road
+      const road = new THREE.Mesh(
+        new THREE.BoxGeometry(10, 0.05, 50),
+        new THREE.MeshStandardMaterial({ color: 0x444444 })
+      );
+      road.position.z = -15;
+      scene.add(road);
+
+      if (playerObject) {
+        playerObject.position.set(0, 0.8, 5);
+      }
+      scene.add(playerObject);
+
+      currentEnvironment = "city";
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Basic animations based on current scene
+      if (currentEnvironment === "birth") {
+        const baby = scene.getObjectByName("baby");
+        if (baby) baby.rotation.y += 0.01;
+        const mom = scene.getObjectByName("mom");
+        if (mom) mom.rotation.y += 0.005;
+        const dad = scene.getObjectByName("dad");
+        if (dad) dad.rotation.y -= 0.005;
+      } else if (playerObject) {
+        // Player animation could be more complex, e.g., walking
+        // For now, simple rotation
+        playerObject.rotation.y += 0.005;
+      }
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // --- Game Logic ---
+    const info = document.getElementById("info");
+    const eventOverlay = document.getElementById("event-overlay");
+    const eventTitle = document.getElementById("event-title");
+    const eventMessage = document.getElementById("event-message");
+    const eventOptions = document.getElementById("event-options");
+    const militaryInfoDiv = document.getElementById("military-info");
+    const safakCounterSpan = document.getElementById("safak-counter");
+    const militaryStatusSpan = document.getElementById("military-status");
 
     let player = {
       name: "",
@@ -127,27 +391,18 @@
       money: 0,
       disease: "",
       religion: "",
-      family: Math.random() < 0.5 ? "Zengin" : "Fakir"
+      family: Math.random() < 0.5 ? "Zengin" : "Fakir",
+      karma: 0, // Amel Defteri
+      hasCar: false,
+      hasHouse: false,
+      isMarried: false,
+      militaryStatus: "Muaf Değil", // "Muaf Değil", "Askere Gitti", "Bedelli Yaptı", "Firari"
+      militaryServiceRemaining: 0, // In days
+      militaryDraftAttempts: 0
     };
 
-    let currentScene = "birth";
     let ageInterval;
-    let playerObject;
-
-    function animate() {
-      requestAnimationFrame(animate);
-      if (currentScene === "birth") {
-        baby.rotation.y += 0.01;
-        mom.rotation.y += 0.005;
-        dad.rotation.y -= 0.005;
-      } else if (currentScene === "home") {
-        playerObject.rotation.y += 0.005;
-      }
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    const info = document.getElementById("info");
+    let militaryInterval;
 
     function startLife() {
       player.name = document.getElementById("name").value || "İsimsiz";
@@ -158,17 +413,15 @@
 
       document.getElementById("cry").play();
 
-      setTimeout(() => {
-        document.getElementById("voiceMom").play();
-      }, 2000);
-      setTimeout(() => {
-        document.getElementById("voiceDad").play();
-      }, 4000);
+      setTimeout(() => { document.getElementById("voiceMom").play(); }, 2000);
+      setTimeout(() => { document.getElementById("voiceDad").play(); }, 4000);
 
       document.getElementById("ui").style.display = "none";
 
       if (player.disease === "kör") {
-        renderer.setClearColor(0x000000);
+        renderer.setClearColor(0x000000); // Black screen for blindness
+      } else {
+        createBirthScene();
       }
 
       setTimeout(() => {
@@ -177,51 +430,431 @@
     }
 
     function spawnAtHome() {
-      currentScene = "home";
-      scene.clear();
-
-      const room = new THREE.Mesh(
-        new THREE.BoxGeometry(10, 0.2, 10),
-        new THREE.MeshStandardMaterial({ color: 0x444444 })
-      );
-      scene.add(room);
-
-      playerObject = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 32, 32),
-        new THREE.MeshStandardMaterial({ color: 0xffffcc })
-      );
-      playerObject.position.set(0, 0.5, 0);
-      scene.add(playerObject);
-
-      scene.add(light);
-
-      player.age = 1;
+      createHomeScene();
+      player.age = 0; // Start at age 0, not 1
       updateInfo();
 
       ageInterval = setInterval(() => {
         player.age++;
         updateInfo();
-        if (player.age === 3) {
-          alert("Anne seni besliyor...");
-        } else if (player.age === 6) {
-          alert("Okula başlıyorsun!");
-        } else if (player.age === 18) {
-          alert("Askere gidiyorsun!");
-        } else if (player.age === 25) {
-          alert("İşe başladın: Yazılımcı");
-          player.money += 5000;
-        }
-      }, 7000);
+        handleLifeEvents();
+      }, 5000); // Each 5 seconds is 1 year
     }
 
     function updateInfo() {
-      info.innerText = `${player.name} ${player.surname} | Yaş: ${player.age} | Din: ${player.religion} | Aile: ${player.family} | Para: ${player.money}₺`;
+      info.innerText = `
+        Ad: ${player.name} ${player.surname}
+        Yaş: ${player.age}
+        Din: ${player.religion}
+        Aile: ${player.family}
+        Para: ${player.money}₺
+        Karma: ${player.karma}
+        Ev: ${player.hasHouse ? "Var" : "Yok"}
+        Araba: ${player.hasCar ? "Var" : "Yok"}
+        Evlilik: ${player.isMarried ? "Evli" : "Bekar"}
+        Askerlik: ${player.militaryStatus}
+      `;
     }
+
+    function showEvent(title, message, options) {
+      eventTitle.innerText = title;
+      eventMessage.innerText = message;
+      eventOptions.innerHTML = "";
+      options.forEach(option => {
+        const button = document.createElement("button");
+        button.innerText = option.text;
+        button.className = "option-button";
+        button.onclick = () => {
+          hideEvent();
+          option.action();
+        };
+        eventOptions.appendChild(button);
+      });
+      eventOverlay.style.display = "flex";
+    }
+
+    function hideEvent() {
+      eventOverlay.style.display = "none";
+    }
+
+    function handleLifeEvents() {
+      // Basic childhood events
+      if (player.age === 1 && player.disease !== "kör") {
+        showEvent("İlk Adımlar", "Yürümeye başladın! Annen çok mutlu.", [{ text: "Harika!", action: () => { } }]);
+        document.getElementById("voiceMom").play();
+      } else if (player.age === 3) {
+        showEvent("Ana Kucağı", "Annen seni besliyor ve ninniler söylüyor...", [{ text: "Huzur içinde büyü", action: () => { } }]);
+        document.getElementById("voiceMom").play();
+      } else if (player.age === 6) {
+        showEvent("Okul Çağı", "İlkokula başlıyorsun! Yeni arkadaşlar edinecek misin?", [
+          { text: "Evet!", action: () => { player.karma += 5; } },
+          { text: "Sıkıcı...", action: () => { player.karma -= 2; } }
+        ]);
+        createCityScene(); // Simulate going to school/city
+      } else if (player.age === 15) {
+        showEvent("Ergenlik!", "Ergenliğe girdin. Nasıl bir genç olacaksın?", [
+          { text: "Derslerine odaklan", action: () => { player.karma += 5; player.money += 100; } },
+          { text: "Arkadaşlarla gez", action: () => { player.karma += 1; } },
+          { text: "Bela ara", action: () => { player.karma -= 10; player.money -= 50; } }
+        ]);
+      } else if (player.age === 18) {
+        showEvent("Reşit Oldun!", "Artık yetişkinsin! Hayatında ne yapacaksın?", [
+          { text: "Üniversiteye git", action: () => { player.money -= 500; } }, // Cost of university
+          { text: "İş hayatına atıl", action: () => { player.money += 200; } }
+        ]);
+        // Ask about military service at 20, as per the request
+      } else if (player.age === 20 && player.militaryStatus === "Muaf Değil" && player.militaryDraftAttempts < 3) {
+        askForMilitaryService();
+      } else if (player.age === 25 && !player.isMarried) {
+        showEvent("Evlilik Zamanı?", "Evlilik düşünceleri aklına gelmeye başladı. Birini bulabilecek misin?", [
+          { text: "Evet, birini ara", action: () => { attemptMarriage(); } },
+          { text: "Henüz değil, kariyer önceliğim", action: () => { player.money += 1000; } }
+        ]);
+      } else if (player.age === 30 && !player.hasHouse) {
+        showEvent("Ev Alma Zamanı?", "Bir ev satın almak ister misin? (5000₺)", [
+          { text: "Evet, al", action: () => { buyHouse(); } },
+          { text: "Hayır, kirada kal", action: () => { player.money -= 100; } }
+        ]);
+      } else if (player.age === 35 && !player.hasCar) {
+        showEvent("Araba Alma Zamanı?", "Bir araba almak ister misin? (2000₺)", [
+          { text: "Evet, al", action: () => { buyCar(); } },
+          { text: "Hayır, toplu taşıma kullan", action: () => { } }
+        ]);
+      } else if (player.age === 40) {
+        showEvent("Hayatın Ortası", "Hayatının ortalarına geldin. Ne hissediyorsun?", [
+          { text: "Huzurluyum", action: () => { player.karma += 5; } },
+          { text: "Pişmanlıklarım var", action: () => { player.karma -= 5; } }
+        ]);
+      } else if (player.age === 60) {
+        showEvent("Emeklilik", "Emekli oldun! Artık daha rahat bir hayatın var.", [
+          { text: "Dinlen", action: () => { player.money += 2000; } },
+          { text: "Hobi edin", action: () => { player.karma += 10; } }
+        ]);
+      } else if (player.age === 70 && Math.random() < 0.3) { // Chance of illness
+        showEvent("Sağlık Sorunları", "Yaşlılık belirtileri başladı. Doktor kontrolünden geçmelisin.", [
+          { text: "Doktora git (200₺)", action: () => { player.money -= 200; showEvent("Tedavi", "İyileştin!", [{ text: "Oh be!", action: () => { } }]); } },
+          { text: "Umursama", action: () => { showEvent("Kötüleşme", "Hastalığın ilerledi, karmadan düştü!", [{ text: "Lanet olsun", action: () => { player.karma -= 15; } }]); } }
+        ]);
+      } else if (player.age >= 80) {
+        showEvent("Son Yıllar", "Hayatının son demlerindesin. Geride ne bırakacaksın?", [
+          { text: "Hayata veda et...", action: () => { endGame(); } }
+        ]);
+      }
+
+      // Random events based on Karma
+      if (Math.random() < 0.1) { // 10% chance each year for a random event
+        handleRandomEvent();
+      }
+    }
+
+    function askForMilitaryService() {
+      player.militaryDraftAttempts++;
+      showEvent("Askerlik Çağrısı", "20 yaşına geldin ve askerlik çağrın geldi. Ne yapmak istersin?", [
+        { text: "Askerliğe git (Normal)", action: () => { startMilitaryService("normal"); } },
+        { text: "Bedelli yap (180.000₺)", action: () => { startMilitaryService("bedelli"); } },
+        { text: "Şimdilik gitme (5 yıl sonra tekrar sorulacak)", action: () => { player.militaryStatus = "Muaf Değil"; } }
+      ]);
+
+      if (player.militaryDraftAttempts >= 3 && player.militaryStatus === "Muaf Değil") {
+        showEvent("Zorunlu Askerlik!", "Çok fazla kaçtın! Artık zorla askere alınıyorsun.", [
+          { text: "Tamamdır...", action: () => { startMilitaryService("normal"); } }
+        ]);
+      }
+    }
+
+    function startMilitaryService(type) {
+      clearInterval(ageInterval); // Pause aging during military service
+      createMilitaryScene();
+      militaryInfoDiv.style.display = "block";
+
+      if (type === "normal") {
+        player.militaryStatus = "Askere Gitti";
+        player.militaryServiceRemaining = 365; // 1 year of service
+        showEvent("Askerlik Başladı!", "Kışlaya katıldın. Yeni hayatına hoş geldin!", [
+          { text: "Görev bilinciyle...", action: () => { player.karma += 10; } }
+        ]);
+        militaryInterval = setInterval(updateMilitaryService, 1000); // Update daily (fast for demo)
+      } else if (type === "bedelli") {
+        if (player.money >= 180000) {
+          player.money -= 180000;
+          player.militaryStatus = "Bedelli Yaptı";
+          player.militaryServiceRemaining = 21; // 21 days for bedelli
+          showEvent("Bedelli Yaptın!", "Paralı askerlik hizmetini tamamladın. Hayatına devam edebilirsin.", [
+            { text: "Oh be!", action: () => { } }
+          ]);
+          militaryInterval = setInterval(updateMilitaryService, 500); // Faster for bedelli
+        } else {
+          showEvent("Yetersiz Para", "Bedelli askerlik için yeterli paran yok! Normal askerlik veya erteleme seçmelisin.", [
+            { text: "Anladım", action: () => { askForMilitaryService(); } } // Re-prompt
+          ]);
+          player.militaryStatus = "Muaf Değil"; // Reset status since action failed
+          ageInterval = setInterval(() => {
+            player.age++;
+            updateInfo();
+            handleLifeEvents();
+          }, 5000); // Resume aging
+        }
+      }
+    }
+
+    function updateMilitaryService() {
+      player.militaryServiceRemaining--;
+      safakCounterSpan.innerText = player.militaryServiceRemaining;
+      militaryStatusSpan.innerText = player.militaryStatus;
+
+      if (player.militaryServiceRemaining <= 0) {
+        clearInterval(militaryInterval);
+        militaryInfoDiv.style.display = "none";
+        player.militaryStatus = "Tamamlandı";
+        showEvent("Terhis!", "Askerliğin bitti! Sivil hayata geri dönüyorsun.", [
+          { text: "Hayırlı teskereler!", action: () => { createCityScene(); } }
+        ]);
+        ageInterval = setInterval(() => {
+          player.age++;
+          updateInfo();
+          handleLifeEvents();
+        }, 5000); // Resume aging
+      } else if (player.militaryStatus === "Askere Gitti") {
+        // Daily events during military service
+        if (player.militaryServiceRemaining % 30 === 0) { // Monthly event
+          const randomEvent = Math.random();
+          if (randomEvent < 0.3) {
+            showEvent("Askerlik Olayı", "Patates soyma görevi aldın.", [
+              { text: "Soy", action: () => { player.karma += 1; } },
+              { text: "İtiraz et", action: () => { player.karma -= 5; showEvent("Ceza!", "Komutan ceza verdi.", [{ text: "Tüh", action: () => { } }]); } }
+            ]);
+          } else if (randomEvent < 0.6) {
+            showEvent("Askerlik Olayı", "Savaşa katılmak zorunda kaldın!", [
+              { text: "Cesurca savaş", action: () => { player.karma += 15; showEvent("Kahramanlık!", "Takdir edildin.", [{ text: "Teşekkürler", action: () => { } }]); } },
+              { text: "Saklan", action: () => { player.karma -= 10; showEvent("Korkaklık!", "Ceza aldın.", [{ text: "Eyvah", action: () => { } }]); } }
+            ]);
+            document.getElementById("explosion").play();
+          } else if (randomEvent < 0.8) {
+            showEvent("Firar Şansı", "Firar etmek ister misin? Çok riskli!", [
+              { text: "Firar et", action: () => { attemptDesertion(); } },
+              { text: "Kışlada kal", action: () => { } }
+            ]);
+          }
+        }
+      }
+      updateInfo(); // Update info immediately after each military day/event
+    }
+
+    function attemptDesertion() {
+      clearInterval(militaryInterval); // Pause military service
+      militaryInfoDiv.style.display = "none";
+      player.militaryStatus = "Firari";
+      createCityScene(); // Back to city environment
+      showEvent("Firar Ettin!", "Kışladan kaçtın! Polis seni arayacak...", [
+        { text: "Saklanmaya çalış", action: () => { player.karma -= 20; handleDesertionChase(); } }
+      ]);
+      document.getElementById("carHorn").play(); // Simulate police car
+    }
+
+    function handleDesertionChase() {
+      let chaseAttempts = 0;
+      const chaseInterval = setInterval(() => {
+        chaseAttempts++;
+        if (chaseAttempts > 5) { // After 5 "years" of chase attempts (or more frequent updates)
+          clearInterval(chaseInterval);
+          if (Math.random() < 0.7) { // 70% chance of being caught
+            showEvent("Yakalandın!", "Polis seni yakaladı ve askere geri götürüyor!", [
+              { text: "Lanet olsun", action: () => { startMilitaryService("normal"); player.militaryServiceRemaining += 180; player.karma -= 50; } } // Add 6 months to service
+            ]);
+          } else {
+            showEvent("Kaçmayı Başardın!", "Polisten kaçmayı başardın! Artık özgürsün ama firarisin.", [
+              { text: "Yeni bir hayata başla", action: () => { } }
+            ]);
+            player.militaryStatus = "Firari (Başarılı)"; // A new status for successful evasion
+            ageInterval = setInterval(() => {
+              player.age++;
+              updateInfo();
+              handleLifeEvents();
+            }, 5000); // Resume aging
+          }
+        } else {
+          showEvent("Kaçış Devam Ediyor...", `Polis seni aramaya devam ediyor. (${5 - chaseAttempts} deneme kaldı)`, [
+            { text: "Köşeye gizlen", action: () => { } },
+            { text: "Kılık değiştir", action: () => { } }
+          ]);
+        }
+      }, 5000); // Each 5 seconds is a chase attempt/tick
+    }
+
+    function attemptMarriage() {
+      const partnerChance = Math.random();
+      if (partnerChance < 0.6) { // 60% chance to find someone
+        player.isMarried = true;
+        showEvent("Evlendin!", "Hayat arkadaşını buldun ve evlendiniz! Mutluluklar dileriz.", [
+          { text: "Çok mutluyum!", action: () => { player.karma += 20; } }
+        ]);
+      } else {
+        showEvent("Evlenemedin", "Uygun birini bulamadın veya evlilik kısmetin olmadı. Tekrar dene?", [
+          { text: "Şansımı denerim", action: () => { } },
+          { text: "Yalnız kalacağım", action: () => { player.karma -= 5; } }
+        ]);
+      }
+    }
+
+    function buyHouse() {
+      if (player.money >= 5000) {
+        player.money -= 5000;
+        player.hasHouse = true;
+        showEvent("Ev Aldın!", "Kendi evine sahip oldun! Artık kira derdin yok.", [
+          { text: "Harika!", action: () => { player.karma += 10; } }
+        ]);
+        createHomeScene(); // Switch back to a better "home" scene
+      } else {
+        showEvent("Yetersiz Para", "Ev almak için yeterli paran yok!", [
+          { text: "Daha çok çalışmalıyım", action: () => { } }
+        ]);
+      }
+    }
+
+    function buyCar() {
+      if (player.money >= 2000) {
+        player.money -= 2000;
+        player.hasCar = true;
+        showEvent("Araba Aldın!", "Kendi araban var! Ulaşım artık çok daha kolay.", [
+          { text: "Yola çıkalım!", action: () => { player.karma += 5; } }
+        ]);
+      } else {
+        showEvent("Yetersiz Para", "Araba almak için yeterli paran yok!", [
+          { text: "Daha çok para biriktir", action: () => { } }
+        ]);
+      }
+    }
+
+    function handleRandomEvent() {
+      const eventType = Math.random();
+
+      if (eventType < 0.3) {
+        // Good event
+        showEvent("Şanslı Gün!", "Yolda para buldun!", [
+          { text: "Al", action: () => { player.money += 100; player.karma += 1; } },
+          { text: "Karakola teslim et", action: () => { showEvent("Dürüstlük!", "Çok dürüst davrandın. Karma puanın arttı!", [{ text: "Görev tamam", action: () => { player.karma += 10; } }]); } }
+        ]);
+      } else if (eventType < 0.6) {
+        // Bad event
+        showEvent("Kötü Bir Gün", "Cebindeki paranı çaldırdın!", [
+          { text: "Lanet olsun!", action: () => { player.money = Math.max(0, player.money - 500); player.karma -= 2; } }
+        ]);
+      } else if (eventType < 0.8) {
+        // Moral dilemma
+        showEvent("Ahlaki İkilem", "Bir arkadaşın senden yasa dışı bir işe katılmanı istiyor.", [
+          { text: "Kabul et (Riskli ama kazançlı)", action: () => { attemptCrime(); } },
+          { text: "Reddet (Güvenli)", action: () => { player.karma += 5; showEvent("Dürüstlük", "Arkadaşını reddettin, doğru olanı yaptın.", [{ text: "İyi insan", action: () => { } }]); } }
+        ]);
+      } else {
+        // Generic event
+        showEvent("Sıradan Bir Gün", "Yeni bir hobiye başlamak ister misin?", [
+          { text: "Evet (100₺)", action: () => { player.money -= 100; player.karma += 3; } },
+          { text: "Hayır", action: () => { } }
+        ]);
+      }
+    }
+
+    function attemptCrime() {
+      const crimeType = Math.random();
+      if (crimeType < 0.5) { // Bank Robbery
+        showEvent("Banka Soygunu Planı!", "Bir banka soygununa katılmak ister misin? Yakalanırsan hapishane...", [
+          { text: "Evet, soy", action: () => { executeBankRobbery(); } },
+          { text: "Hayır, çok riskli", action: () => { player.karma += 1; } }
+        ]);
+      } else { // Car Theft
+        showEvent("Araba Çalma Fırsatı!", "Park edilmiş lüks bir araba gördün. Çalmak ister misin?", [
+          { text: "Evet, çal", action: () => { executeCarTheft(); } },
+          { text: "Hayır, başım belaya girmesin", action: () => { player.karma += 1; } }
+        ]);
+      }
+    }
+
+    function executeBankRobbery() {
+      const successChance = Math.random();
+      if (successChance < 0.3) { // 30% success chance
+        const loot = Math.floor(Math.random() * 5000) + 1000;
+        player.money += loot;
+        player.karma -= 50;
+        showEvent("Soygun Başarılı!", `Bankayı soydun ve ${loot}₺ kazandın!`, [
+          { text: "Zengin oldum!", action: () => { } }
+        ]);
+        document.getElementById("explosion").play(); // Sound effect for action
+      } else {
+        player.karma -= 100;
+        showEvent("Yakalandın!", "Banka soygununda yakalandın! Hapse giriyorsun.", [
+          { text: "Hapishaneye git", action: () => { goToPrison(5); } } // 5 years in prison
+        ]);
+      }
+    }
+
+    function executeCarTheft() {
+      const successChance = Math.random();
+      if (successChance < 0.6) { // 60% success chance
+        player.hasCar = true;
+        player.money += 500; // Sell value or direct use
+        player.karma -= 20;
+        showEvent("Araba Çalındı!", "Araba senin oldu! Satabilir veya kullanabilirsin.", [
+          { text: "Süper!", action: () => { } }
+        ]);
+        document.getElementById("carHorn").play();
+      } else {
+        player.karma -= 40;
+        showEvent("Yakalandın!", "Araba çalarken yakalandın! Hapse giriyorsun.", [
+          { text: "Hapishaneye git", action: () => { goToPrison(2); } } // 2 years in prison
+        ]);
+      }
+    }
+
+    function goToPrison(years) {
+      clearInterval(ageInterval); // Stop aging
+      showEvent("Hapishane!", `Hapishaneye girdin. ${years} yıl hapis yatacaksın.`, [
+        { text: "Zor zamanlar...", action: () => { } }
+      ]);
+      const prisonSentenceInterval = setInterval(() => {
+        years--;
+        showEvent("Hapishane...", `Hapishanede ${years} yılın kaldı.`, [
+          { text: "Bekle...", action: () => { } }
+        ]);
+        if (years <= 0) {
+          clearInterval(prisonSentenceInterval);
+          showEvent("Özgürlük!", "Hapisten çıktın! Yeni bir başlangıç yapabilirsin.", [
+            { text: "Hayata geri dön", action: () => { } }
+          ]);
+          ageInterval = setInterval(() => {
+            player.age++;
+            updateInfo();
+            handleLifeEvents();
+          }, 5000); // Resume aging
+        }
+      }, 5000); // Each 5 seconds is 1 year in prison
+    }
+
+    function endGame() {
+      clearInterval(ageInterval);
+      if (militaryInterval) clearInterval(militaryInterval);
+      hideEvent();
+      document.getElementById("ui").style.display = "flex"; // Show UI again
+      document.getElementById("ui").innerHTML = `
+        <h1>Hayat Yolculuğunun Sonu</h1>
+        <p>${player.name} ${player.surname}, ${player.age} yaşında hayatını kaybetti.</p>
+        <p>Hayatında topladığın Karma puanı: ${player.karma}</p>
+        <p>Kalan Para: ${player.money}₺</p>
+        <p>${player.karma >= 0 ? "Güzel bir hayat yaşadın, ardında iyi anılar bıraktın." : "Hayatında bazı kötü seçimler yaptın, ancak her zaman yeni bir başlangıç fırsatı vardır."}</p>
+        <button onclick="location.reload()">Tekrar Dene</button>
+      `;
+      // Clear canvas and scene elements
+      scene.clear();
+      renderer.setClearColor(0x000000);
+      info.style.display = 'none';
+      militaryInfoDiv.style.display = 'none';
+    }
+
 
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
-  </script></body>
+  </script>
+</body>
 </html>
