@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>TC Yaşam Simülasyonu V3.0</title>
+  <title>TC Yaşam Simülasyonu V3.1</title>
   <style>
     html, body {
       margin: 0;
@@ -70,7 +70,7 @@
       background-color: #45a049;
     }
     canvas { display: block; }
-    #info, #event-overlay, #military-info, #psychologist-overlay {
+    #info, #event-overlay, #military-info, #psychologist-overlay, #game-controls, #shop-overlay {
       position: absolute;
       background: rgba(0,0,0,0.8);
       padding: 15px;
@@ -78,30 +78,30 @@
       border-radius: 8px;
       box-shadow: 0 0 15px rgba(0,255,0,0.3);
       border: 1px solid #4CAF50;
-      z-index: 11; /* Above UI for events */
+      z-index: 11;
     }
     #info {
       bottom: 20px;
       left: 20px;
       width: 300px;
     }
-    #event-overlay, #psychologist-overlay {
+    #event-overlay, #psychologist-overlay, #shop-overlay {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
       width: 80%;
       max-width: 600px;
       text-align: center;
-      display: none; /* Hidden by default */
+      display: none;
     }
-    #event-overlay h2, #psychologist-overlay h2 {
+    #event-overlay h2, #psychologist-overlay h2, #shop-overlay h2 {
       color: #FFEB3B;
       margin-top: 0;
     }
-    #event-overlay p, #psychologist-overlay p {
+    #event-overlay p, #psychologist-overlay p, #shop-overlay p {
       margin-bottom: 20px;
     }
-    #event-overlay button, #psychologist-overlay button {
+    #event-overlay button, #psychologist-overlay button, #shop-overlay button {
       margin: 5px;
       padding: 10px 20px;
       font-size: 1rem;
@@ -117,30 +117,36 @@
     #military-info {
       top: 20px;
       right: 20px;
-      display: none; /* Hidden until military service starts */
+      display: none;
     }
     #psychologist-input {
-      width: calc(100% - 24px); /* Full width minus padding */
+      width: calc(100% - 24px);
       margin-bottom: 15px;
       height: 100px;
       resize: vertical;
     }
     #game-controls {
-      position: absolute;
       bottom: 20px;
       right: 20px;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      border-radius: 8px;
-      z-index: 11;
-      display: none; /* Hidden until game starts */
+      display: none;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    #game-controls .movement-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 5px;
+    }
+    #game-controls .movement-buttons button:nth-child(2) {
+        grid-column: 2; /* Center the forward button */
+    }
+    #game-controls .movement-buttons button:nth-child(4) {
+        grid-column: 2; /* Center the back button */
     }
     #game-controls button {
-      margin: 5px;
-      padding: 10px 15px;
-      font-size: 0.9rem;
-      width: auto;
-      max-width: unset;
+      margin: 0; /* Remove default margin */
+      width: 100%;
     }
   </style>
 </head>
@@ -149,8 +155,8 @@
 
   <div id="ui">
     <h1>🍼 TC Yaşam Simülasyonu 🇹🇷</h1>
-    <label>Ad: <input id="name" placeholder="Adını gir"></label>
-    <label>Soyad: <input id="surname" placeholder="Soyadını gir"></label>
+    <label>Ad: <input id="name" placeholder="Adını gir" required></label>
+    <label>Soyad: <input id="surname" placeholder="Soyadını gir" required></label>
     <label>Doğum Yılı: <input type="number" id="year" value="2025"></label>
     <label>Hastalık (isteğe bağlı):
       <select id="disease">
@@ -191,13 +197,29 @@
     <button class="option-button" onclick="hidePsychologistOverlay()">Bitir</button>
   </div>
 
+  <div id="shop-overlay">
+    <h2>Mağaza</h2>
+    <p>Ne satın almak istersin?</p>
+    <div id="shop-items">
+      <button onclick="buyItem('clothes')">Kıyafet (200₺)</button>
+      <button onclick="buyItem('pants')">Pantolon (150₺)</button>
+    </div>
+    <p id="shop-message"></p>
+    <button class="option-button" onclick="hideShopOverlay()">Çık</button>
+  </div>
+
   <div id="game-controls">
-    <button onclick="movePlayer('forward')">İleri</button>
-    <button onclick="movePlayer('back')">Geri</button>
-    <button onclick="movePlayer('left')">Sol</button>
-    <button onclick="movePlayer('right')">Sağ</button>
+    <div class="movement-buttons">
+      <button onclick="movePlayer('left')">SOL</button>
+      <button onclick="movePlayer('forward')">İLERİ</button>
+      <button onclick="movePlayer('right')">SAĞ</button>
+      <button onclick="movePlayer('back')" style="grid-column: 2;">GERİ</button>
+    </div>
     <button onclick="toggleWalkAnimation()">Yürü/Dur</button>
     <button onclick="toggleRunAnimation()">Koş/Dur</button>
+    <button onclick="enterBuilding('shop')">Mağazaya Gir</button>
+    <button onclick="enterBuilding('hospital')">Hastaneye Gir</button>
+    <button onclick="enterBuilding('halısaha')">Halısahaya Git</button>
   </div>
 
 
@@ -206,6 +228,7 @@
   <audio id="voiceDad" src="https://www.soundjay.com/human/sounds/male-voice-01.mp3"></audio>
   <audio id="explosion" src="https://www.soundjay.com/misc/sounds/explosion-01.mp3"></audio>
   <audio id="carHorn" src="https://www.soundjay.com/vehicles/sounds/car-horn-01.mp3"></audio>
+  <audio id="fightSound" src="https://www.soundjay.com/fight/sounds/punch-01.mp3"></audio>
 
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
@@ -251,14 +274,85 @@
 
     // Player and NPC Objects (initially placeholder, will be replaced by GLTF models)
     let playerObject, momObject, dadObject;
-    let mixer; // For animation mixer
+    let mixerPlayer, mixerMom, mixerDad; // For animation mixers
     const clock = new THREE.Clock();
 
     // Player Animation States
     let isWalking = false;
     let isRunning = false;
 
+    // --- Human Model Creator ---
+    // This is a more complex placeholder for a human-like figure (joystick will control this)
+    function createHumanModel(colorBody, colorClothes, colorPants, colorEyes) {
+        const body = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.5, 1.2, 32), // Torso
+            new THREE.MeshStandardMaterial({ color: colorBody, roughness: 0.6 })
+        );
+        body.position.y = 0.6;
+
+        const head = new THREE.Mesh(
+            new THREE.SphereGeometry(0.3, 32, 32),
+            new THREE.MeshStandardMaterial({ color: colorBody, roughness: 0.6 })
+        );
+        head.position.y = 1.5; // On top of body
+
+        const leftArm = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.1, 0.6, 32, 32),
+            new THREE.MeshStandardMaterial({ color: colorBody, roughness: 0.6 })
+        );
+        leftArm.position.set(-0.4, 0.9, 0);
+        leftArm.rotation.z = Math.PI / 8;
+
+        const rightArm = leftArm.clone();
+        rightArm.position.x = 0.4;
+        rightArm.rotation.z = -Math.PI / 8;
+
+        const leftLeg = new THREE.Mesh(
+            new THREE.CapsuleGeometry(0.12, 0.7, 32, 32),
+            new THREE.MeshStandardMaterial({ color: colorBody, roughness: 0.6 })
+        );
+        leftLeg.position.set(-0.2, -0.1, 0);
+
+        const rightLeg = leftLeg.clone();
+        rightLeg.position.x = 0.2;
+
+        const shirt = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.32, 0.52, 0.6, 32), // Simple shirt over torso
+            new THREE.MeshStandardMaterial({ color: colorClothes, roughness: 0.8 })
+        );
+        shirt.position.y = 0.9;
+
+        const pants = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.35, 0.7, 32), // Simple pants
+            new THREE.MeshStandardMaterial({ color: colorPants, roughness: 0.8 })
+        );
+        pants.position.y = 0.2;
+
+        const leftEye = new THREE.Mesh(
+            new THREE.SphereGeometry(0.05, 16, 16),
+            new THREE.MeshStandardMaterial({ color: colorEyes })
+        );
+        leftEye.position.set(-0.15, 1.6, 0.25);
+
+        const rightEye = leftEye.clone();
+        rightEye.position.x = 0.15;
+
+        const mouth = new THREE.Mesh(
+            new THREE.BoxGeometry(0.2, 0.05, 0.05),
+            new THREE.MeshStandardMaterial({ color: 0x8B0000 })
+        );
+        mouth.position.set(0, 1.4, 0.25);
+
+        const group = new THREE.Group();
+        group.add(body, head, leftArm, rightArm, leftLeg, rightLeg, shirt, pants, leftEye, rightEye, mouth);
+        group.castShadow = true;
+        group.receiveShadow = true;
+        return group;
+    }
+
+
     // --- Scene Creation Functions (Updated to hint at GLTF loading) ---
+    let currentEnvironment = ""; // To keep track of current scene
 
     function createBirthScene() {
       // Clear all existing objects except lights and ground
@@ -284,22 +378,19 @@
       bed.position.y = 0;
       scene.add(bed);
 
-      // Parent models (Sphere for now, replace with GLTF)
-      momObject = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 32, 32),
-        new THREE.MeshStandardMaterial({ color: 0xffaaaa, roughness: 0.7, metalness: 0.1 })
-      );
-      momObject.position.set(-1.5, 1.2, 0);
+      // Parent models using human model creator
+      momObject = createHumanModel(0xffccaa, 0xff69b4, 0x5F9EA0, 0x000000); // Pink shirt, cyan pants
+      momObject.scale.set(0.7, 0.7, 0.7);
+      momObject.position.set(-1.5, momObject.scale.y * 0.8, 0); // Adjust position based on scale
       momObject.name = "mom";
       scene.add(momObject);
 
-      dadObject = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 32, 32),
-        new THREE.MeshStandardMaterial({ color: 0xaaaaff, roughness: 0.7, metalness: 0.1 })
-      );
-      dadObject.position.set(1.5, 1.2, 0);
+      dadObject = createHumanModel(0xffccaa, 0x4682B4, 0x2F4F4F, 0x000000); // Steelblue shirt, dark slate gray pants
+      dadObject.scale.set(0.8, 0.8, 0.8);
+      dadObject.position.set(1.5, dadObject.scale.y * 0.8, 0);
       dadObject.name = "dad";
       scene.add(dadObject);
+
 
       currentEnvironment = "birth";
       camera.position.set(0, 1.6, 5); // Closer view for birth
@@ -342,30 +433,24 @@
       wall4.position.set(0, wallHeight / 2 - 0.05, roomSize / 2);
       scene.add(wall4);
 
-      // Placeholder for player (replace with actual human model)
+      // Player object
       if (!playerObject) {
-        playerObject = new THREE.Mesh(
-          new THREE.CapsuleGeometry(0.4, 1.0, 32, 32),
-          new THREE.MeshStandardMaterial({ color: 0xffffcc, roughness: 0.6 })
-        );
-        playerObject.castShadow = true;
+        playerObject = createHumanModel(0xffdcb9, 0x6495ED, 0x8B0000, 0x000000); // Player's initial colors
       }
-      playerObject.position.set(0, 0.8, 0);
+      playerObject.position.set(0, playerObject.scale.y * 0.8, 0);
       scene.add(playerObject);
 
-      // Placeholder for parents (will need to load GLTF models)
+      // Parent models (re-create if not existing, or update their positions)
       if (!momObject) {
-        momObject = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.0, 32, 32), new THREE.MeshStandardMaterial({ color: 0xffaaaa }));
-        momObject.castShadow = true;
+        momObject = createHumanModel(0xffccaa, 0xff69b4, 0x5F9EA0, 0x000000);
       }
-      momObject.position.set(-3, 0.8, -3);
+      momObject.position.set(-3, momObject.scale.y * 0.8, -3);
       scene.add(momObject);
 
       if (!dadObject) {
-        dadObject = new THREE.Mesh(new THREE.CapsuleGeometry(0.4, 1.0, 32, 32), new THREE.MeshStandardMaterial({ color: 0xaaaaff }));
-        dadObject.castShadow = true;
+        dadObject = createHumanModel(0xffccaa, 0x4682B4, 0x2F4F4F, 0x000000);
       }
-      dadObject.position.set(3, 0.8, -3);
+      dadObject.position.set(3, dadObject.scale.y * 0.8, -3);
       scene.add(dadObject);
 
 
@@ -389,28 +474,49 @@
         }
       });
 
-      // School Building (placeholder)
-      const schoolBuilding = new THREE.Mesh(
-        new THREE.BoxGeometry(15, 8, 10),
-        new THREE.MeshStandardMaterial({ color: 0xB0C4DE }) // Light blue-grey
-      );
-      schoolBuilding.position.y = 4;
-      schoolBuilding.position.z = -5;
-      scene.add(schoolBuilding);
+      // School Building walls (to create an indoor classroom feel)
+      const wallsMaterial = new THREE.MeshStandardMaterial({ color: 0xDAA520, side: THREE.BackSide, roughness: 0.8 }); // Goldenrod
+      const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xDEB887 }); // BurlyWood
+      const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0xF5DEB3 }); // Wheat
 
-      // Classroom elements (placeholder)
+      const roomSize = 15;
+      const wallHeight = 6;
+
+      const floor = new THREE.Mesh(new THREE.BoxGeometry(roomSize, 0.1, roomSize), floorMaterial);
+      floor.position.y = -0.05;
+      scene.add(floor);
+
+      const ceiling = new THREE.Mesh(new THREE.BoxGeometry(roomSize, 0.1, roomSize), ceilingMaterial);
+      ceiling.position.y = wallHeight - 0.05;
+      scene.add(ceiling);
+
+      const wall1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, wallHeight, roomSize), wallsMaterial);
+      wall1.position.set(-roomSize / 2, wallHeight / 2 - 0.05, 0);
+      scene.add(wall1);
+      const wall2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, wallHeight, roomSize), wallsMaterial);
+      wall2.position.set(roomSize / 2, wallHeight / 2 - 0.05, 0);
+      scene.add(wall2);
+      const wall3 = new THREE.Mesh(new THREE.BoxGeometry(roomSize, wallHeight, 0.1), wallsMaterial);
+      wall3.position.set(0, wallHeight / 2 - 0.05, -roomSize / 2);
+      scene.add(wall3);
+      const wall4 = new THREE.Mesh(new THREE.BoxGeometry(roomSize, wallHeight, 0.1), wallsMaterial);
+      wall4.position.set(0, wallHeight / 2 - 0.05, roomSize / 2);
+      scene.add(wall4);
+
+      // Blackboard
       const blackboard = new THREE.Mesh(
         new THREE.BoxGeometry(4, 2, 0.1),
         new THREE.MeshStandardMaterial({ color: 0x000000 })
       );
-      blackboard.position.set(0, 2.5, 4.9);
+      blackboard.position.set(0, 2.5, -roomSize / 2 + 0.1); // Against back wall
       scene.add(blackboard);
 
+      // Teacher Desk
       const teacherDesk = new THREE.Mesh(
         new THREE.BoxGeometry(1.5, 0.8, 0.8),
         new THREE.MeshStandardMaterial({ color: 0x8B4513 })
       );
-      teacherDesk.position.set(0, 0.4, 3);
+      teacherDesk.position.set(0, 0.4, -roomSize / 2 + 1.5);
       scene.add(teacherDesk);
 
       // Desks and chairs
@@ -420,32 +526,33 @@
             new THREE.BoxGeometry(0.8, 0.6, 0.6),
             new THREE.MeshStandardMaterial({ color: 0x552200 })
           );
-          studentDesk.position.set(i * 2 - 3, 0.3, j * 1.5 - 2);
+          studentDesk.position.set(i * 2 - 3, 0.3, j * 2 - 2);
           scene.add(studentDesk);
 
           const studentChair = new THREE.Mesh(
             new THREE.BoxGeometry(0.4, 0.7, 0.4),
             new THREE.MeshStandardMaterial({ color: 0x774411 })
           );
-          studentChair.position.set(i * 2 - 3, 0.35, j * 1.5 - 2 + 0.5);
+          studentChair.position.set(i * 2 - 3, 0.35, j * 2 - 2 + 0.5);
           scene.add(studentChair);
         }
       }
 
       if (playerObject) {
-        playerObject.position.set(-2, 0.8, 0); // Player in classroom
+        playerObject.position.set(-2, playerObject.scale.y * 0.8, 2); // Player in classroom
       }
       scene.add(playerObject);
 
       // Update appearance based on grade (conceptual - would involve changing textures/models)
       if (grade === "ilkokul") {
-        // Smaller desks, brighter colors etc.
+         camera.position.set(0, 3, 7); // Closer view
       } else if (grade === "ortaokul") {
-        // Slightly larger desks
+         camera.position.set(0, 3.5, 8);
       } else if (grade === "lise") {
-        // Adult-like desks
+         camera.position.set(0, 4, 9);
       } else if (grade === "üniversite") {
-        // Lecture hall setup
+         // Maybe add a lecturer and bigger desks/auditorium feel
+         camera.position.set(0, 5, 10);
       }
 
       currentEnvironment = "school";
@@ -476,7 +583,7 @@
       scene.add(tent);
 
       if (playerObject) {
-        playerObject.position.set(-2, 0.8, 2);
+        playerObject.position.set(-2, playerObject.scale.y * 0.8, 2);
         // Player appearance for military (uniform - conceptual)
       }
       scene.add(playerObject);
@@ -523,7 +630,7 @@
       scene.add(sidewalk2);
 
       if (playerObject) {
-        playerObject.position.set(0, 0.8, 5); // Player on sidewalk
+        playerObject.position.set(0, playerObject.scale.y * 0.8, 5); // Player on sidewalk
         // Update player appearance for adult/city life (clothes - conceptual)
       }
       scene.add(playerObject);
@@ -561,7 +668,7 @@
       scene.add(shelves);
 
       if (playerObject) {
-        playerObject.position.set(0, 0.8, 4);
+        playerObject.position.set(0, playerObject.scale.y * 0.8, 4);
       }
       scene.add(playerObject);
       currentEnvironment = "shop";
@@ -597,7 +704,7 @@
       scene.add(doctorDesk);
 
       if (playerObject) {
-        playerObject.position.set(0, 0.8, 5);
+        playerObject.position.set(0, playerObject.scale.y * 0.8, 5);
       }
       scene.add(playerObject);
       currentEnvironment = "hospital";
@@ -633,7 +740,7 @@
       scene.add(goal2);
 
       if (playerObject) {
-        playerObject.position.set(0, 0.8, 0);
+        playerObject.position.set(0, playerObject.scale.y * 0.8, 0);
       }
       scene.add(playerObject);
       currentEnvironment = "halısaha";
@@ -644,25 +751,56 @@
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
-      if (mixer) mixer.update(delta); // Update animations
+      if (mixerPlayer) mixerPlayer.update(delta); // Update player animations
+      if (mixerMom) mixerMom.update(delta); // Update mom animations
+      if (mixerDad) mixerDad.update(delta); // Update dad animations
 
       // Joystick-like movement
-      if (playerObject && (isWalking || isRunning)) {
-        let speed = isWalking ? 0.05 : 0.1;
-        // Basic forward movement relative to player's facing direction
-        playerObject.position.x += Math.sin(playerObject.rotation.y) * speed;
-        playerObject.position.z += Math.cos(playerObject.rotation.y) * speed;
+      if (playerObject) {
+        let speed = 0;
+        if (isWalking) speed = 0.05;
+        if (isRunning) speed = 0.1;
+
+        if (speed > 0) {
+            // Apply movement based on current rotation
+            playerObject.position.x += Math.sin(playerObject.rotation.y) * speed;
+            playerObject.position.z += Math.cos(playerObject.rotation.y) * speed;
+
+            // Simple "walking" animation for placeholder model
+            playerObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Left arm
+            playerObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Right arm
+            playerObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Left leg
+            playerObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Right leg
+        } else {
+            // Reset limbs to neutral position when not moving
+            playerObject.children[3].rotation.x = 0;
+            playerObject.children[4].rotation.x = 0;
+            playerObject.children[5].rotation.x = 0;
+            playerObject.children[6].rotation.x = 0;
+        }
+
+        // Parent animations (simple walking placeholder)
+        if (momObject && currentEnvironment === "home") {
+            momObject.position.x += Math.sin(clock.getElapsedTime() * 0.5) * 0.01;
+            momObject.position.z += Math.cos(clock.getElapsedTime() * 0.5) * 0.01;
+            // Simple "walking" animation for placeholder model
+            momObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 5) * 0.5; // Left arm
+            momObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 5) * 0.5; // Right arm
+            momObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 5) * 0.5; // Left leg
+            momObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 5) * 0.5; // Right leg
+        }
+        if (dadObject && currentEnvironment === "home") {
+            dadObject.position.x -= Math.sin(clock.getElapsedTime() * 0.4) * 0.01;
+            dadObject.position.z += Math.cos(clock.getElapsedTime() * 0.4) * 0.01;
+            // Simple "walking" animation for placeholder model
+            dadObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 4) * 0.5; // Left arm
+            dadObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 4) * 0.5; // Right arm
+            dadObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 4) * 0.5; // Left leg
+            dadObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 4) * 0.5; // Right leg
+        }
       }
 
-      // Basic animations based on current scene
-      if (currentEnvironment === "birth") {
-        const baby = scene.getObjectByName("baby");
-        if (baby) baby.rotation.y += 0.01;
-        if (momObject) momObject.rotation.y += 0.005;
-        if (dadObject) dadObject.rotation.y -= 0.005;
-      } else if (playerObject) {
-        // Player animation handled by joystick controls
-      }
+
       renderer.render(scene, camera);
     }
     animate();
@@ -681,13 +819,15 @@
     const psychologistResponseDiv = document.getElementById("psychologist-response");
     const curseAttemptsSpan = document.getElementById("curse-attempts");
     const gameControls = document.getElementById("game-controls");
+    const shopOverlay = document.getElementById("shop-overlay");
+    const shopMessage = document.getElementById("shop-message");
 
     let player = {
       name: "",
       surname: "",
       year: 2025,
       age: 0,
-      money: 0,
+      money: 1000, // Başlangıç parası
       disease: "",
       religion: "",
       family: Math.random() < 0.5 ? "Zengin" : "Fakir",
@@ -702,7 +842,11 @@
       job: "İşsiz",
       psychologicalHealth: 100, // Max 100, lower is worse
       curseCount: 0,
-      psychologistBanUntil: 0 // Year when ban lifts
+      psychologistBanUntil: 0, // Year when ban lifts
+      hasPubertyAcne: false,
+      hasBodyHair: false,
+      playerClothesColor: 0x6495ED, // Initial clothes color
+      playerPantsColor: 0x8B0000 // Initial pants color
     };
 
     let ageInterval;
@@ -717,26 +861,34 @@
     // --- Core Game Functions ---
 
     function startLife() {
-      player.name = document.getElementById("name").value || "İsimsiz";
-      player.surname = document.getElementById("surname").value || "Soyadsız";
+      const nameInput = document.getElementById("name").value;
+      const surnameInput = document.getElementById("surname").value;
+
+      if (!nameInput || !surnameInput) {
+        alert("Ad ve Soyad boş bırakılamaz!");
+        return;
+      }
+
+      player.name = nameInput;
+      player.surname = surnameInput;
       player.year = parseInt(document.getElementById("year").value) || 2025;
       player.disease = document.getElementById("disease").value;
       player.religion = document.getElementById("religion").value;
 
       document.getElementById("cry").play();
       document.getElementById("ui").style.display = "none";
-      gameControls.style.display = "block"; // Show joystick controls
+      gameControls.style.display = "flex"; // Show joystick controls
 
       if (player.disease === "kör") {
-        renderer.setClearColor(0x000000);
+        renderer.setClearColor(0x000000); // Black screen for blindness
+        speakText("Gözlerin görmüyor. Dünyan karanlık.", null);
       } else {
         createBirthScene();
+        speakText("Hoş geldin bebeğim! Ben annen.", document.getElementById("voiceMom"));
+        setTimeout(() => {
+          speakText("Hayata gözlerini açtın evlat! Ben de baban.", document.getElementById("voiceDad"));
+        }, 4000);
       }
-
-      speakText("Hoş geldin bebeğim! Ben annen.", document.getElementById("voiceMom"));
-      setTimeout(() => {
-        speakText("Hayata gözlerini açtın evlat! Ben de baban.", document.getElementById("voiceDad"));
-      }, 4000);
 
       setTimeout(() => {
         spawnAtHome();
@@ -774,33 +926,60 @@
     }
 
     function updatePlayerAppearance() {
-      // This is where you would load different GLTF models or apply texture changes
-      // based on player.age to simulate growth, puberty, clothes etc.
-      if (!playerObject) return; // Ensure player object exists
+      // Remove old player object to update its properties
+      if (playerObject) {
+          scene.remove(playerObject);
+      }
 
+      // Recreate player object with potentially updated colors/sizes
+      let bodyColor = 0xffdcb9; // Default skin color
+      let clothesColor = player.playerClothesColor;
+      let pantsColor = player.playerPantsColor;
+      let eyesColor = 0x000000; // Default eye color
+
+      if (player.hasPubertyAcne && player.age >= 13) {
+          bodyColor = 0xFFC0CB; // Slightly reddish/pinkish for acne
+      }
+
+      playerObject = createHumanModel(bodyColor, clothesColor, pantsColor, eyesColor);
+      playerObject.position.set(0, 0, 0); // Reset position (will be handled by movement)
+
+      let scaleFactor = 0.3; // Default for baby/toddler
       if (player.age < 6) {
-        // Baby/Toddler look (smaller, rounder)
-        playerObject.scale.set(0.6, 0.6, 0.6);
+        scaleFactor = 0.4; // Baby/Toddler look (smaller, rounder)
       } else if (player.age >= 6 && player.age < 12) {
-        // Child look
-        playerObject.scale.set(0.8, 0.8, 0.8);
+        scaleFactor = 0.6; // Child look
         player.educationLevel = "İlkokul";
       } else if (player.age >= 12 && player.age < 18) {
-        // Teenager look
-        playerObject.scale.set(1, 1, 1); // Normal size
+        scaleFactor = 0.8; // Teenager look
         player.educationLevel = "Ortaokul";
         handlePubertyChanges();
       } else if (player.age >= 18 && player.age < 22) {
+        scaleFactor = 1.0;
         player.educationLevel = "Lise";
       } else if (player.age >= 22 && player.age < 26) {
+        scaleFactor = 1.0;
         player.educationLevel = "Üniversite";
       } else if (player.age >= 26) {
+        scaleFactor = 1.0;
         player.educationLevel = "Mezun";
       }
+      playerObject.scale.set(scaleFactor, scaleFactor, scaleFactor);
+      playerObject.position.y = scaleFactor * 0.8; // Adjust y position based on new scale
 
-      // Clothes/hair color could change based on money, age etc.
-      // Example: playerObject.material.color.set(new THREE.Color(0xRRGGBB));
-      // For more complex visuals, load GLTF models:
+      scene.add(playerObject);
+
+      // Update parent appearance (simple scaling/animation for now)
+      if (momObject) {
+          momObject.scale.set(0.8, 0.8, 0.8);
+          momObject.position.y = momObject.scale.y * 0.8;
+      }
+      if (dadObject) {
+          dadObject.scale.set(0.9, 0.9, 0.9);
+          dadObject.position.y = dadObject.scale.y * 0.8;
+      }
+
+      // For GLTF models, this is where you'd load new models or swap parts
       /*
       loader.load('path/to/aged_player_model.gltf', (gltf) => {
           if (playerObject) scene.remove(playerObject);
@@ -808,14 +987,13 @@
           playerObject.position.set(0, 0.8, 0); // Or current position
           playerObject.castShadow = true;
           scene.add(playerObject);
-          mixer = new THREE.AnimationMixer(playerObject);
+          mixerPlayer = new THREE.AnimationMixer(playerObject); // Assign to specific mixer
           // Load animations
       });
       */
     }
 
     function handlePubertyChanges() {
-      // This is conceptual. Visually, you'd apply textures/materials for acne, body hair.
       if (player.age === 13 && !player.hasPubertyAcne) {
         showEvent("Ergenlik Belirtileri", "Yüzünde sivilceler çıkmaya başladı! Ne yapacaksın?", [
           { text: "Sivilceleri patlat (Riskli)", action: () => {
@@ -824,13 +1002,14 @@
               } else {
                 showEvent("Temizledin!", "Yüzün biraz daha temiz görünüyor.", [{ text: "İyi", action: () => { player.karma += 1; } }]);
               }
-              player.hasPubertyAcne = true;
+              player.hasPubertyAcne = true; // Mark as handled for this event
+              updatePlayerAppearance(); // To potentially show acne color
             }
           },
           { text: "Bakım yap (50₺)", action: () => {
               if (player.money >= 50) {
                 player.money -= 50;
-                showEvent("Bakım Yaptın!", "Sivilcelerin azaldı, psikolojik sağlığın arttı.", [{ text: "Teşekkürler", action: () => { player.psychologicalHealth += 5; player.hasPubertyAcne = true; } }]);
+                showEvent("Bakım Yaptın!", "Sivilcelerin azaldı, psikolojik sağlığın arttı.", [{ text: "Teşekkürler", action: () => { player.psychologicalHealth += 5; player.hasPubertyAcne = false; } }]);
               } else {
                 showEvent("Paran Yok", "Bakım için yeterli paran yok!", [{ text: "Pekala", action: () => { } }]);
               }
@@ -892,24 +1071,26 @@
       // --- Childhood & Education ---
       if (player.age === 6) {
         showEvent("Okula Başlama", "İlkokula başlıyorsun! Okula gitmek ister misin?", [
-          { text: "Evet, okula git", action: () => { createSchoolScene("ilkokul"); player.karma += 5; } },
-          { text: "Hayır, gitmek istemiyorum", action: () => { player.karma -= 10; speakText("Okula gitmeyi reddettin. Bu kararın ileriki hayatını etkileyebilir."); } }
+          { text: "Evet, okula git", action: () => { createSchoolScene("ilkokul"); player.karma += 5; speakText("Okula gitmeyi kabul ettin."); } },
+          { text: "Hayır, gitmek istemiyorum", action: () => { player.karma -= 10; speakText("Okula gitmeyi reddettin. Bu kararın ileriki hayatını etkileyebilir."); createCityScene(); } }
         ]);
       } else if (player.age === 10 && player.educationLevel === "İlkokul" && Math.random() < 0.2) { // Random school question
-        showEvent("Okulda Soru", "Öğretmen sana bir soru sordu: 'Türkiye'nin başkenti neresidir?'", [
-          { text: "Ankara", action: () => { showEvent("Doğru Cevap!", "Öğretmen seni tebrik etti.", [{ text: "Teşekkürler", action: () => { player.karma += 2; } }]); } },
-          { text: "İstanbul", action: () => { showEvent("Yanlış Cevap!", "Öğretmen sana üzüldü.", [{ text: "Üzgünüm", action: () => { player.karma -= 1; } }]); } }
-        ]);
+        if (currentEnvironment !== "school") { // Only ask if not already in school
+            showEvent("Okulda Soru", "Öğretmen sana bir soru sordu: 'Türkiye'nin başkenti neresidir?'", [
+            { text: "Ankara", action: () => { showEvent("Doğru Cevap!", "Öğretmen seni tebrik etti.", [{ text: "Teşekkürler", action: () => { player.karma += 2; } }]); } },
+            { text: "İstanbul", action: () => { showEvent("Yanlış Cevap!", "Öğretmen sana üzüldü.", [{ text: "Üzgünüm", action: () => { player.karma -= 1; } }]); } }
+            ]);
+        }
       } else if (player.age === 14 && player.educationLevel === "Ortaokul") {
         showEvent("Ortaokul Bitiyor", "Lise için hangi alana yönelmek istersin?", [
-          { text: "Fen Lisesi (Zeka)", action: () => { player.karma += 5; } },
-          { text: "Sosyal Bilimler Lisesi (Sosyal)", action: () => { player.karma += 3; } },
-          { text: "Meslek Lisesi (Pratik)", action: () => { player.karma += 2; } }
+          { text: "Fen Lisesi (Zeka)", action: () => { player.karma += 5; speakText("Fen lisesini seçtin."); } },
+          { text: "Sosyal Bilimler Lisesi (Sosyal)", action: () => { player.karma += 3; speakText("Sosyal bilimler lisesini seçtin."); } },
+          { text: "Meslek Lisesi (Pratik)", action: () => { player.karma += 2; speakText("Meslek lisesini seçtin."); } }
         ]);
       } else if (player.age === 18 && player.educationLevel === "Lise") {
         showEvent("Lise Bitti!", "Üniversiteye gitmek ister misin? (Sınav var!)", [
           { text: "Evet, sınava gir", action: () => { takeUniversityExam(); } },
-          { text: "Hayır, direkt iş hayatına atıl", action: () => { player.job = "Niteliksiz İşçi"; player.money += 500; speakText("Üniversiteye gitmeyi tercih etmedin. İş hayatına atıldın."); } }
+          { text: "Hayır, direkt iş hayatına atıl", action: ()소를: () => { player.job = "Niteliksiz İşçi"; player.money += 500; speakText("Üniversiteye gitmeyi tercih etmedin. İş hayatına atıldın."); createCityScene(); } }
         ]);
       }
 
@@ -919,21 +1100,21 @@
       } else if (player.age === 25 && !player.isMarried) {
         showEvent("Evlilik Zamanı?", "Evlilik düşünceleri aklına gelmeye başladı. Birini bulabilecek misin?", [
           { text: "Evet, birini ara", action: () => { attemptMarriage(); } },
-          { text: "Henüz değil, kariyer önceliğim", action: () => { player.money += 1000; } }
+          { text: "Henüz değil, kariyer önceliğim", action: () => { player.money += 1000; speakText("Evlenmeyi erteledin."); } }
         ]);
       } else if (player.age === 26 && player.job === "İşsiz" && player.educationLevel === "Mezun") {
         showEvent("Meslek Seçimi", "Hangi mesleği yapmak istersin?", [
           { text: "Yazılımcı (Yüksek Gelir)", action: () => { player.job = "Yazılımcı"; player.money += 5000; speakText("Yazılımcı oldun!"); createCityScene(); } },
-          { text: "Öğretmen (Orta Gelir)", action: () => { player.job = "Öğretmen"; player.money += 2500; speakText("Öğretmen oldun!"); createCityScene(); } },
-          { text: "Esnaf (Değişken Gelir)", action: () => { player.job = "Esnaf"; player.money += 1500; speakText("Esnaf oldun!"); createCityScene(); } }
+          { text: "Öğretmen (Orta Gelir)", action: () => { player.job = "Öğretmen"; player.money += 2500; speakText("Öğretmen oldun!"); createSchoolScene("mezun"); } }, // Öğretmen olunca okula dönebilir
+          { text: "Esnaf (Değişken Gelir)", action: () => { player.job = "Esnaf"; player.money += 1500; speakText("Esnaf oldun!"); createShopScene(); } } // Esnaf olunca mağaza sahnesi
         ]);
       } else if (player.age === 30 && !player.hasHouse) {
-        showEvent("Ev Alma Zamanı?", "Bir ev satın almak ister misin? (50.000₺)", [
+        showEvent("Ev Alma Zamanı?", "Bir ev satın almak ister misin? (5.000₺)", [ // Fiyatı düşürdüm başlangıç için
           { text: "Evet, al", action: () => { buyHouse(); } },
           { text: "Hayır, kirada kal", action: () => { player.money -= 100; speakText("Kirada kalmayı tercih ettin."); } }
         ]);
       } else if (player.age === 35 && !player.hasCar) {
-        showEvent("Araba Alma Zamanı?", "Bir araba almak ister misin? (20.000₺)", [
+        showEvent("Araba Alma Zamanı?", "Bir araba almak ister misin? (2.000₺)", [ // Fiyatı düşürdüm başlangıç için
           { text: "Evet, al", action: () => { buyCar(); } },
           { text: "Hayır, toplu taşıma kullan", action: () => { speakText("Toplu taşıma kullanmayı tercih ettin."); } }
         ]);
@@ -942,13 +1123,13 @@
       // --- Social & Random Events ---
       if (player.age >= 18 && Math.random() < 0.05 && friends.length === 0) { // Chance to make friends after 18
         showEvent("Yeni Arkadaş", "Yeni bir arkadaş edinmek ister misin?", [
-          { text: "Evet", action: () => { friends.push("Can"); showEvent("Arkadaşlık", "Can adında yeni bir arkadaşın oldu!", [{ text: "Harika!", action: () => { } }]); } },
-          { text: "Hayır", action: () => { } }
+          { text: "Evet", action: () => { friends.push("Can"); showEvent("Arkadaşlık", "Can adında yeni bir arkadaşın oldu!", [{ text: "Harika!", action: () => { speakText("Can adında yeni bir arkadaşın oldu!"); } }]); } },
+          { text: "Hayır", action: () => { speakText("Arkadaş edinmeyi reddettin."); } }
         ]);
       } else if (player.age >= 18 && friends.length > 0 && Math.random() < 0.1) {
         showEvent("Halısaha Maçı", "Arkadaşlarınla halı sahaya gitmek ister misin? (50₺)", [
           { text: "Evet, git", action: () => { goToHalısaha(); } },
-          { text: "Hayır", action: () => { } }
+          { text: "Hayır", action: () => { speakText("Halısahaya gitmeyi reddettin."); } }
         ]);
       }
 
@@ -967,6 +1148,18 @@
         handleRandomEvent();
       }
 
+      // Sibling marriage event
+      siblings.forEach(sibling => {
+          if (sibling.age >= 25 && !sibling.isMarried && Math.random() < 0.1) {
+              sibling.isMarried = true;
+              showEvent("Düğün Duyurusu", `${sibling.name} kardeşin evleniyor! Düğüne katılmak ister misin?`, [
+                  { text: "Evet, katılırım", action: () => { showEvent("Düğün", "Kardeşinin düğününde çok eğlendin!", [{ text: "Tebrikler!", action: () => { player.karma += 5; speakText("Kardeşinin düğününe katıldın."); createCityScene(); } }]); } },
+                  { text: "Hayır, işim var", action: () => { showEvent("Kaçırdın", "Kardeşinin düğününü kaçırdın. Belki de gitmeliydin...", [{ text: "Üzgünüm", action: () => { player.karma -= 2; speakText("Kardeşinin düğününü kaçırdın."); createCityScene(); } }]); } }
+              ]);
+          }
+      });
+
+
       // --- End Game ---
       if (player.age >= 80) {
         showEvent("Son Yıllar", "Hayatının son demlerindesin. Geride ne bırakacaksın?", [
@@ -984,24 +1177,23 @@
     }
 
     let examScore = 0;
-    let examAttempts = 0;
     let cheatAttempted = false;
 
     function startUniversityExam() {
       examScore = 0;
       cheatAttempted = false;
       if (player.psychologistBanUntil > player.year + player.age) {
-          showEvent("Sınav Yasağı!", `Psikologdan atıldığın için ${player.psychologistBanUntil} yılına kadar sınava giremezsin!`, [
-              { text: "Pekala", action: () => {} }
+          showEvent("Sınav Yasağı!", `Psikologdan atıldığın için ${player.psychologistBanUntil - player.age} yaşına kadar sınava giremezsin!`, [ // Yaşına göre ban yılını göster
+              { text: "Pekala", action: () => { createCityScene(); } }
           ]);
           return;
       }
 
       const questions = [
-        { q: "Türkiye'nin en yüksek dağı hangisidir?", a: ["Ağrı Dağı", "Erciyes", "Uludağ", "Kaçkar"], correct: 0 },
-        { q: "Fotosentez nedir?", a: ["Bitkilerin nefes alması", "Bitkilerin besin üretmesi", "Bitkilerin su içmesi", "Bitkilerin büyümesi"], correct: 1 },
-        { q: "Kimya biliminin sembolü H2O neyi temsil eder?", a: ["Karbonmonoksit", "Hidrojen peroksit", "Su", "Oksijen"], correct: 2 },
-        { q: "Mustafa Kemal Atatürk hangi yılda doğmuştur?", a: ["1880", "1881", "1882", "1883"], correct: 1 },
+        { q: "Türkiye'nin başkenti neresidir?", a: ["Adana", "Ankara", "İstanbul", "İzmir"], correct: 1 },
+        { q: "2 + 2 kaç eder?", a: ["3", "4", "5", "6"], correct: 1 },
+        { q: "Hangi gezegen Güneş'e en yakındır?", a: ["Dünya", "Mars", "Merkür", "Venüs"], correct: 2 },
+        { q: "Atatürk hangi ilde doğmuştur?", a: ["İzmir", "Ankara", "Selanik", "İstanbul"], correct: 2 },
       ];
 
       let currentQuestionIndex = 0;
@@ -1031,11 +1223,12 @@
 
       function attemptCheat() {
         if (Math.random() < 0.4) { // 40% chance of getting caught
-          showEvent("Kopya Çekerken Yakalandın!", "Sınavın iptal edildi! 1 ila 3 yıl arası sınava giremeyeceksin.", [
+          showEvent("Kopya Çekerken Yakalandın!", "Sınavın iptal edildi! 1 ila 3 yıl arası sınava giremeyeceksin. Yardım edenler de ceza alacak.", [
             { text: "Eyvah!", action: () => {
                 cheatAttempted = true;
                 const banYears = Math.floor(Math.random() * 3) + 1; // 1 to 3 years ban
                 player.psychologistBanUntil = player.year + player.age + banYears; // Using this property for exam ban
+                player.karma -= 20; // Karma düşüşü
                 finishExam(); // End exam prematurely
               }
             }
@@ -1051,7 +1244,7 @@
       function finishExam() {
         if (cheatAttempted) {
           showEvent("Sınav Sonucu", `Kopya nedeniyle sınavın iptal edildi. ${player.psychologistBanUntil - (player.year + player.age)} yıl sınava giremezsin.`, [
-            { text: "Pekala", action: () => { player.educationLevel = "Lise Mezunu"; } }
+            { text: "Pekala", action: () => { player.educationLevel = "Lise Mezunu"; createCityScene(); } }
           ]);
           speakText(`Kopya nedeniyle sınavın iptal edildi.`);
           return;
@@ -1063,7 +1256,7 @@
           ]);
         } else {
           showEvent("Sınavı Geçemedin", `Maalesef ${examScore} puanla sınavı geçemedin.`, [
-            { text: "Tekrar deneyeceğim", action: () => { player.educationLevel = "Lise Mezunu"; } }
+            { text: "Tekrar deneyeceğim", action: () => { player.educationLevel = "Lise Mezunu"; createCityScene(); } }
           ]);
           speakText(`Sınavı geçemedin.`);
         }
@@ -1231,7 +1424,7 @@
           { text: "Çok eğlendim!", action: () => { player.psychologicalHealth += 10; player.karma += 3; speakText("Halısaha maçı yaptın."); createCityScene(); } }
         ]);
       } else {
-        showEvent("Yetersiz Para", "Halısaha için yeterli paran yok!", [
+        showEvent("Yetersiz Para", "Halısaha için yeterli paran yok! (50₺)", [
           { text: "Pekala", action: () => { } }
         ]);
         speakText("Halısaha için yeterli paran yok.");
@@ -1240,45 +1433,107 @@
 
     // --- Asset Functions ---
     function buyHouse() {
-      if (player.money >= 50000) {
-        player.money -= 50000;
+      if (player.money >= 5000) {
+        player.money -= 5000;
         player.hasHouse = true;
         showEvent("Ev Aldın!", "Kendi evine sahip oldun! Artık kira derdin yok.", [
           { text: "Harika!", action: () => { player.karma += 10; speakText("Ev satın aldın!"); createHomeScene(); } }
         ]);
       } else {
-        showEvent("Yetersiz Para", "Ev almak için yeterli paran yok! (50.000₺)", [
+        showEvent("Yetersiz Para", "Ev almak için yeterli paran yok! (5.000₺)", [
           { text: "Daha çok çalışmalıyım", action: () => { speakText("Ev almak için yeterli paran yok."); } }
         ]);
       }
     }
 
     function buyCar() {
-      if (player.money >= 20000) {
-        player.money -= 20000;
+      if (player.money >= 2000) {
+        player.money -= 2000;
         player.hasCar = true;
         showEvent("Araba Aldın!", "Kendi araban var! Ulaşım artık çok daha kolay.", [
           { text: "Yola çıkalım!", action: () => { player.karma += 5; speakText("Araba satın aldın!"); } }
         ]);
       } else {
-        showEvent("Yetersiz Para", "Araba almak için yeterli paran yok! (20.000₺)", [
+        showEvent("Yetersiz Para", "Araba almak için yeterli paran yok! (2.000₺)", [
           { text: "Daha çok para biriktir", action: () => { speakText("Araba almak için yeterli paran yok."); } }
         ]);
       }
     }
 
+    // --- Shop Functions ---
+    function enterBuilding(buildingType) {
+        if (buildingType === 'shop') {
+            createShopScene();
+            showShopOverlay();
+        } else if (buildingType === 'hospital') {
+            createHospitalScene();
+            showEvent("Hastanedesin", "Şu an hastanede bulunuyorsun. Ne yapmak istersin?", [
+                { text: "Doktorla konuş (100₺)", action: () => {
+                    if (player.money >= 100) { player.money -= 100; speakText("Doktorla konuştun. Kendini biraz daha iyi hissediyorsun."); player.psychologicalHealth = Math.min(100, player.psychologicalHealth + 10); createCityScene(); }
+                    else { showEvent("Yetersiz Para", "Doktor ücreti için yeterli paran yok!", [{ text: "Pekala", action: () => { createCityScene(); } }]); }
+                }},
+                { text: "Çık", action: () => { createCityScene(); speakText("Hastaneden ayrıldın."); } }
+            ]);
+        } else if (buildingType === 'halısaha') {
+            goToHalısaha(); // Reuse existing function
+        }
+    }
+
+    function showShopOverlay() {
+        shopOverlay.style.display = 'flex';
+        shopMessage.innerText = "";
+    }
+
+    function hideShopOverlay() {
+        shopOverlay.style.display = 'none';
+        createCityScene(); // Return to city when leaving shop
+    }
+
+    function buyItem(item) {
+        if (item === 'clothes') {
+            if (player.money >= 200) {
+                player.money -= 200;
+                player.playerClothesColor = Math.floor(Math.random()*16777215); // Random new color
+                updatePlayerAppearance();
+                shopMessage.innerText = "Yeni kıyafet aldın! Kalan para: " + player.money + "₺";
+                speakText("Yeni kıyafet aldın!");
+            } else {
+                shopMessage.innerText = "Yeterli paran yok! Kıyafet 200₺.";
+                speakText("Kıyafet almak için yeterli paran yok!");
+            }
+        } else if (item === 'pants') {
+            if (player.money >= 150) {
+                player.money -= 150;
+                player.playerPantsColor = Math.floor(Math.random()*16777215); // Random new color
+                updatePlayerAppearance();
+                shopMessage.innerText = "Yeni pantolon aldın! Kalan para: " + player.money + "₺";
+                speakText("Yeni pantolon aldın!");
+            } else {
+                shopMessage.innerText = "Yeterli paran yok! Pantolon 150₺.";
+                speakText("Pantolon almak için yeterli paran yok!");
+            }
+        }
+        updateInfo();
+    }
+
+
     // --- Crime Functions ---
     function handleRandomEvent() {
       const eventType = Math.random();
 
-      if (eventType < 0.2) {
+      if (eventType < 0.15) {
         showEvent("Şanslı Gün!", "Yolda para buldun!", [
           { text: "Al", action: () => { player.money += 100; player.karma += 1; speakText("Yolda para buldun."); } },
           { text: "Karakola teslim et", action: () => { showEvent("Dürüstlük!", "Çok dürüst davrandın. Karma puanın arttı!", [{ text: "Görev tamam", action: () => { player.karma += 10; speakText("Parayı karakola teslim ettin."); } }]); } }
         ]);
-      } else if (eventType < 0.4) {
+      } else if (eventType < 0.3) {
         showEvent("Kötü Bir Gün", "Cebindeki paranı çaldırdın!", [
           { text: "Lanet olsun!", action: () => { player.money = Math.max(0, player.money - 500); player.karma -= 2; speakText("Paran çalındı!"); } }
+        ]);
+      } else if (eventType < 0.45 && player.age >= 18) {
+        showEvent("Kavga Fırsatı!", "Bir grup gençle aranda gerginlik var. Kavga etmek ister misin?", [
+          { text: "Kavga Başlat", action: () => { startFight(); speakText("Kavga başlatıyorsun!"); } },
+          { text: "Uzaklaş", action: () => { showEvent("Uzaklaştın", "Problemlerden kaçtın.", [{ text: "İyi fikir", action: () => { player.psychologicalHealth += 5; speakText("Kavgadan uzaklaştın."); } }]); } }
         ]);
       } else if (eventType < 0.6) {
         showEvent("Ahlaki İkilem", "Bir arkadaşın senden yasa dışı bir işe katılmanı istiyor.", [
@@ -1292,6 +1547,26 @@
         ]);
       }
     }
+
+    function startFight() {
+        document.getElementById("fightSound").play();
+        const outcome = Math.random();
+        if (outcome < 0.4) {
+            showEvent("Kavgayı Kazandın!", "Rakiplerini yendin! Moralinde artış var.", [
+                { text: "Zafer!", action: () => { player.psychologicalHealth += 15; player.karma -= 5; speakText("Kavgayı kazandın!"); } }
+            ]);
+        } else if (outcome < 0.8) {
+            showEvent("Kavgayı Kaybettin!", "Dayak yedin ve yaralandın. Sağlığın düştü.", [
+                { text: "Acı verici", action: () => { player.psychologicalHealth -= 20; player.karma -= 10; speakText("Kavgayı kaybettin!"); } }
+            ]);
+            enterBuilding('hospital'); // Go to hospital automatically
+        } else {
+            showEvent("Berabere Kaldın!", "Kavga uzadı ve sonuçsuz kaldı. Yorgunsun.", [
+                { text: "Neyse", action: () => { player.psychologicalHealth -= 5; speakText("Kavga berabere bitti."); } }
+            ]);
+        }
+    }
+
 
     function attemptCrime() {
       const crimeType = Math.random();
@@ -1370,9 +1645,9 @@
 
     // --- Psychologist Functions ---
     function goToPsychologist() {
-      if (player.psychologistBanUntil > player.year + player.age) {
-        showEvent("Psikolog Yasağı", `Küfür ettiğin için ${player.psychologistBanUntil} yılına kadar psikologdan yardım alamazsın.`, [
-          { text: "Anladım", action: () => { } }
+      if (player.psychologistBanUntil > player.age) { // Compare with age directly
+        showEvent("Psikolog Yasağı", `Küfür ettiğin için ${player.psychologistBanUntil - player.age} ay daha psikologdan yardım alamazsın.`, [
+          { text: "Anladım", action: () => { createCityScene(); } }
         ]);
         return;
       }
@@ -1387,7 +1662,7 @@
         createHospitalScene(); // Set scene to hospital
       } else {
         showEvent("Yetersiz Para", "Psikolog ücreti için yeterli paran yok! (200₺)", [
-          { text: "Pekala", action: () => { } }
+          { text: "Pekala", action: () => { createCityScene(); } }
         ]);
       }
     }
@@ -1410,7 +1685,7 @@
         if (player.curseCount >= 5) {
           psychologistResponseDiv.innerText = "Yeter! Seni artık kabul edemem. 7 ay boyunca gelme!";
           speakText("Yeter! Seni artık kabul edemem. 7 ay boyunca gelme!");
-          player.psychologistBanUntil = player.year + player.age + (7 / 12); // Add 7 months to current age
+          player.psychologistBanUntil = player.age + (7 / 12); // Ban for 7 months, convert to years for age comparison
           setTimeout(() => { hidePsychologistOverlay(); createCityScene(); }, 2000);
         } else {
           psychologistResponseDiv.innerText = `Lütfen küfür etmeyiniz. (${5 - player.curseCount} hakkınız kaldı.)`;
@@ -1420,11 +1695,11 @@
         // Simple response based on keywords
         if (userText.includes("mutsuzum") || userText.includes("depresyon")) {
           psychologistResponseDiv.innerText = "Anlıyorum, bu zor bir durum. Daha iyi hissetmen için sana yardımcı olacağım. Küçük adımlarla başlayabiliriz.";
-          player.psychologicalHealth += 10;
+          player.psychologicalHealth = Math.min(100, player.psychologicalHealth + 10);
           speakText("Anlıyorum, bu zor bir durum. Daha iyi hissetmen için sana yardımcı olacağım. Küçük adımlarla başlayabiliriz.");
         } else if (userText.includes("stres") || userText.includes("kaygı")) {
           psychologistResponseDiv.innerText = "Stres ve kaygı yaşamın bir parçası olabilir, ancak bunlarla başa çıkma yöntemleri geliştirebiliriz.";
-          player.psychologicalHealth += 5;
+          player.psychologicalHealth = Math.min(100, player.psychologicalHealth + 5);
           speakText("Stres ve kaygı yaşamın bir parçası olabilir, ancak bunlarla başa çıkma yöntemleri geliştirebiliriz.");
         } else if (userText.includes("arkadaş")) {
             psychologistResponseDiv.innerText = "Arkadaşlık ilişkileri önemlidir. Onlarla bağlarını güçlendirmek için neler yapabilirsin?";
@@ -1437,7 +1712,6 @@
           psychologistResponseDiv.innerText = "Anlıyorum. Biraz daha açmak ister misin?";
           speakText("Anlıyorum. Biraz daha açmak ister misin?");
         }
-        player.psychologicalHealth = Math.min(100, player.psychologicalHealth); // Max 100
       }
     }
 
@@ -1448,11 +1722,28 @@
 
 
     // --- Game Controls (Joystick-like) ---
+    // Keyboard listener for WASD movement
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'w' || event.key === 'W') movePlayer('forward');
+        if (event.key === 's' || event.key === 'S') movePlayer('back');
+        if (event.key === 'a' || event.key === 'A') movePlayer('left');
+        if (event.key === 'd' || event.key === 'D') movePlayer('right');
+    });
+    // Stop animation when key is released (simplified for this example)
+    document.addEventListener('keyup', (event) => {
+        if (event.key === 'w' || event.key === 'W' || event.key === 's' || event.key === 'S') {
+            isWalking = false;
+            isRunning = false;
+        }
+    });
+
     function movePlayer(direction) {
       const rotationSpeed = 0.05;
-      const moveSpeed = 0.1; // This is a base speed, actual speed depends on walk/run state
+      let moveSpeed = 0.1; // Base speed
 
       if (!playerObject) return;
+
+      if (isRunning) moveSpeed = 0.2; // Increase speed if running
 
       switch (direction) {
         case 'forward':
@@ -1470,14 +1761,15 @@
           playerObject.rotation.y -= rotationSpeed;
           break;
       }
+      isWalking = true; // Any movement sets to walking
     }
 
     function toggleWalkAnimation() {
       isWalking = !isWalking;
       isRunning = false; // Cannot walk and run at same time
-      // Here you would trigger walk animation clip in your GLTF model
-      // if (mixer) {
-      //   const walkClip = mixer.clipAction(playerObject.animations.find(a => a.name === 'walk'));
+      // For GLTF models:
+      // if (mixerPlayer) {
+      //   const walkClip = mixerPlayer.clipAction(playerObject.animations.find(a => a.name === 'walk'));
       //   if (isWalking) { walkClip.play(); } else { walkClip.stop(); }
       // }
     }
@@ -1485,9 +1777,9 @@
     function toggleRunAnimation() {
       isRunning = !isRunning;
       isWalking = false; // Cannot walk and run at same time
-      // Here you would trigger run animation clip in your GLTF model
-      // if (mixer) {
-      //   const runClip = mixer.clipAction(playerObject.animations.find(a => a.name === 'run'));
+      // For GLTF models:
+      // if (mixerPlayer) {
+      //   const runClip = mixerPlayer.clipAction(playerObject.animations.find(a => a.name === 'run'));
       //   if (isRunning) { runClip.play(); } else { runClip.stop(); }
       // }
     }
@@ -1497,6 +1789,8 @@
       if (militaryInterval) clearInterval(militaryInterval);
       hideEvent();
       psychologistOverlay.style.display = 'none';
+      shopOverlay.style.display = 'none';
+
       document.getElementById("ui").style.display = "flex";
       document.getElementById("ui").innerHTML = `
         <h1>Hayat Yolculuğunun Sonu</h1>
