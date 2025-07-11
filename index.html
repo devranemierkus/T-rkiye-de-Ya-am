@@ -1,5 +1,4 @@
-<!DOCTYPE html>
-<html lang="tr">
+<!DOCTYPE html><html lang="tr">
 <head>
   <meta charset="UTF-8" />
   <title>TC Yaşam Simülasyonu</title>
@@ -30,12 +29,20 @@
       max-width: 300px;
     }
     canvas { display: block; }
+    #info {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      color: white;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      font-size: 14px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-
-  <div id="ui">
+  <canvas id="gameCanvas"></canvas>  <div id="ui">
     <h1>🍼 Doğum Simülasyonu</h1>
     <label>Ad: <input id="name" placeholder="Adını gir"></label>
     <label>Soyad: <input id="surname" placeholder="Soyadını gir"></label>
@@ -56,20 +63,10 @@
         <option value="yahudi">Yahudilik</option>
       </select>
     </label>
-    <label>Aile Durumu:
-      <select id="family">
-        <option value="random">Rastgele</option>
-        <option value="zengin">Zengin</option>
-        <option value="fakir">Fakir</option>
-      </select>
-    </label>
     <button onclick="startLife()">Hayata Başla</button>
-  </div>
+  </div>  <div id="info"></div><audio id="cry" src="https://www.soundjay.com/human/sounds/baby-crying-01.mp3"></audio> <audio id="voiceMom" src="https://www.soundjay.com/human/sounds/female-voice-01.mp3"></audio> <audio id="voiceDad" src="https://www.soundjay.com/human/sounds/male-voice-01.mp3"></audio>
 
-  <audio id="cry" src="https://www.soundjay.com/human/sounds/baby-crying-01.mp3"></audio>
-
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>  <script>
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
     const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("gameCanvas") });
@@ -87,6 +84,20 @@
     baby.position.y = 1;
     scene.add(baby);
 
+    const mom = new THREE.Mesh(
+      new THREE.SphereGeometry(0.4, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0xffaaaa })
+    );
+    mom.position.set(-1, 1.2, 0);
+    scene.add(mom);
+
+    const dad = new THREE.Mesh(
+      new THREE.SphereGeometry(0.4, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0xaaaaff })
+    );
+    dad.position.set(1, 1.2, 0);
+    scene.add(dad);
+
     let player = {
       name: "",
       surname: "",
@@ -95,15 +106,25 @@
       money: 0,
       disease: "",
       religion: "",
-      family: "",
+      family: Math.random() < 0.5 ? "Zengin" : "Fakir"
     };
+
+    let currentScene = "birth";
 
     function animate() {
       requestAnimationFrame(animate);
-      baby.rotation.y += 0.01;
+      if (currentScene === "birth") {
+        baby.rotation.y += 0.01;
+        mom.rotation.y += 0.005;
+        dad.rotation.y -= 0.005;
+      } else if (currentScene === "world") {
+        cube.rotation.y += 0.005;
+      }
       renderer.render(scene, camera);
     }
     animate();
+
+    const info = document.getElementById("info");
 
     function startLife() {
       player.name = document.getElementById("name").value || "İsimsiz";
@@ -111,15 +132,18 @@
       player.year = parseInt(document.getElementById("year").value) || 2025;
       player.disease = document.getElementById("disease").value;
       player.religion = document.getElementById("religion").value;
-      const famSel = document.getElementById("family").value;
-      player.family = famSel === "random" ? (Math.random() < 0.5 ? "Zengin" : "Fakir") : famSel;
 
       document.getElementById("cry").play();
+
+      setTimeout(() => {
+        document.getElementById("voiceMom").play();
+      }, 2000);
+      setTimeout(() => {
+        document.getElementById("voiceDad").play();
+      }, 4000);
+
       document.getElementById("ui").style.display = "none";
 
-      console.log("Oyuncu:", player);
-
-      // Hastalık etkileri
       if (player.disease === "kör") {
         renderer.setClearColor(0x000000);
       }
@@ -130,7 +154,50 @@
         baby.scale.set(1.2, 1.2, 1.2);
       }
 
-      // Devamı: yaş atlama, okul, askerlik, din, para, meslek, cezaevi, seyahat...
+      // 5 saniye sonra dünya sahnesine geç
+      setTimeout(() => {
+        startWorld();
+      }, 6000);
+    }
+
+    // 3D DÜNYAYA GEÇİŞ
+    let cube;
+    function startWorld() {
+      currentScene = "world";
+
+      // Doğum sahnesini kaldır
+      scene.remove(baby);
+      scene.remove(mom);
+      scene.remove(dad);
+
+      // Örnek dış dünya objesi
+      cube = new THREE.Mesh(
+        new THREE.BoxGeometry(),
+        new THREE.MeshStandardMaterial({ color: 0x00ff00 })
+      );
+      scene.add(cube);
+      camera.position.set(0, 1.6, 5);
+
+      player.age = 1;
+      updateInfo();
+
+      // Yaş atlat
+      setInterval(() => {
+        player.age++;
+        updateInfo();
+        if (player.age === 6) {
+          alert("Okula başladın!");
+        } else if (player.age === 18) {
+          alert("Askere gidiyorsun!");
+        } else if (player.age === 25) {
+          alert("İşe başladın: Yazılımcı!");
+          player.money = 5000;
+        }
+      }, 7000);
+    }
+
+    function updateInfo() {
+      info.innerText = `${player.name} ${player.surname} | Yaş: ${player.age} | Din: ${player.religion} | Aile: ${player.family} | Para: ${player.money}₺`;
     }
 
     window.addEventListener("resize", () => {
@@ -138,6 +205,5 @@
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
-  </script>
-</body>
-      </html>
+  </script></body>
+</html>
