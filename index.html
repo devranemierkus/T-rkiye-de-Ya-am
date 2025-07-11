@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <title>TC Yaşam Simülasyonu V3.1</title>
+  <title>TC Yaşam Simülasyonu V3.2</title>
   <style>
     html, body {
       margin: 0;
@@ -126,12 +126,18 @@
       resize: vertical;
     }
     #game-controls {
+      position: absolute;
       bottom: 20px;
       right: 20px;
-      display: none;
-      display: flex;
+      display: none; /* Initially hidden */
       flex-direction: column;
       gap: 5px;
+      padding: 15px;
+      background: rgba(0,0,0,0.8);
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,255,0,0.3);
+      border: 1px solid #4CAF50;
+      z-index: 11;
     }
     #game-controls .movement-buttons {
         display: grid;
@@ -210,13 +216,11 @@
 
   <div id="game-controls">
     <div class="movement-buttons">
-      <button onclick="movePlayer('left')">SOL</button>
-      <button onclick="movePlayer('forward')">İLERİ</button>
-      <button onclick="movePlayer('right')">SAĞ</button>
-      <button onclick="movePlayer('back')" style="grid-column: 2;">GERİ</button>
+      <button onmousedown="startMovement('left')" onmouseup="stopMovement()" onmouseleave="stopMovement()">SOL</button>
+      <button onmousedown="startMovement('forward')" onmouseup="stopMovement()" onmouseleave="stopMovement()">İLERİ</button>
+      <button onmousedown="startMovement('right')" onmouseup="stopMovement()" onmouseleave="stopMovement()">SAĞ</button>
+      <button onmousedown="startMovement('back')" onmouseup="stopMovement()" onmouseleave="stopMovement()" style="grid-column: 2;">GERİ</button>
     </div>
-    <button onclick="toggleWalkAnimation()">Yürü/Dur</button>
-    <button onclick="toggleRunAnimation()">Koş/Dur</button>
     <button onclick="enterBuilding('shop')">Mağazaya Gir</button>
     <button onclick="enterBuilding('hospital')">Hastaneye Gir</button>
     <button onclick="enterBuilding('halısaha')">Halısahaya Git</button>
@@ -277,9 +281,12 @@
     let mixerPlayer, mixerMom, mixerDad; // For animation mixers
     const clock = new THREE.Clock();
 
-    // Player Animation States
-    let isWalking = false;
-    let isRunning = false;
+    // Player Movement State
+    let isMovingForward = false;
+    let isMovingBack = false;
+    let isTurningLeft = false;
+    let isTurningRight = false;
+    let isRunning = false; // Only running, no separate 'isWalking' state
 
     // --- Human Model Creator ---
     // This is a more complex placeholder for a human-like figure (joystick will control this)
@@ -757,47 +764,60 @@
 
       // Joystick-like movement
       if (playerObject) {
-        let speed = 0;
-        if (isWalking) speed = 0.05;
-        if (isRunning) speed = 0.1;
+        const moveSpeed = isRunning ? 0.2 : 0.1; // Faster when running
+        const rotationSpeed = 0.05;
 
-        if (speed > 0) {
-            // Apply movement based on current rotation
-            playerObject.position.x += Math.sin(playerObject.rotation.y) * speed;
-            playerObject.position.z += Math.cos(playerObject.rotation.y) * speed;
+        // Apply movement
+        if (isMovingForward) {
+          playerObject.position.x += Math.sin(playerObject.rotation.y) * moveSpeed;
+          playerObject.position.z += Math.cos(playerObject.rotation.y) * moveSpeed;
+        }
+        if (isMovingBack) {
+          playerObject.position.x -= Math.sin(playerObject.rotation.y) * moveSpeed;
+          playerObject.position.z -= Math.cos(playerObject.rotation.y) * moveSpeed;
+        }
+        if (isTurningLeft) {
+          playerObject.rotation.y += rotationSpeed;
+        }
+        if (isTurningRight) {
+          playerObject.rotation.y -= rotationSpeed;
+        }
 
-            // Simple "walking" animation for placeholder model
-            playerObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Left arm
-            playerObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Right arm
-            playerObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Left leg
-            playerObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 10 * (speed * 10)) * 0.5; // Right leg
-        } else {
-            // Reset limbs to neutral position when not moving
+        // Simple "walking" animation for placeholder model when moving
+        const animationSpeed = (isMovingForward || isMovingBack) ? (isRunning ? 20 : 10) : 0;
+        playerObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * animationSpeed) * 0.5; // Left arm
+        playerObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * animationSpeed) * 0.5; // Right arm
+        playerObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * animationSpeed) * 0.5; // Left leg
+        playerObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * animationSpeed) * 0.5; // Right leg
+
+        // Reset limbs to neutral position when not moving
+        if (!isMovingForward && !isMovingBack) {
             playerObject.children[3].rotation.x = 0;
             playerObject.children[4].rotation.x = 0;
             playerObject.children[5].rotation.x = 0;
             playerObject.children[6].rotation.x = 0;
         }
+      }
 
-        // Parent animations (simple walking placeholder)
-        if (momObject && currentEnvironment === "home") {
-            momObject.position.x += Math.sin(clock.getElapsedTime() * 0.5) * 0.01;
-            momObject.position.z += Math.cos(clock.getElapsedTime() * 0.5) * 0.01;
-            // Simple "walking" animation for placeholder model
-            momObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 5) * 0.5; // Left arm
-            momObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 5) * 0.5; // Right arm
-            momObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 5) * 0.5; // Left leg
-            momObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 5) * 0.5; // Right leg
-        }
-        if (dadObject && currentEnvironment === "home") {
-            dadObject.position.x -= Math.sin(clock.getElapsedTime() * 0.4) * 0.01;
-            dadObject.position.z += Math.cos(clock.getElapsedTime() * 0.4) * 0.01;
-            // Simple "walking" animation for placeholder model
-            dadObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 4) * 0.5; // Left arm
-            dadObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 4) * 0.5; // Right arm
-            dadObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 4) * 0.5; // Left leg
-            dadObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 4) * 0.5; // Right leg
-        }
+
+      // Parent animations (simple walking placeholder)
+      if (momObject && currentEnvironment === "home") {
+          momObject.position.x += Math.sin(clock.getElapsedTime() * 0.5) * 0.01;
+          momObject.position.z += Math.cos(clock.getElapsedTime() * 0.5) * 0.01;
+          // Simple "walking" animation for placeholder model
+          momObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 5) * 0.5; // Left arm
+          momObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 5) * 0.5; // Right arm
+          momObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 5) * 0.5; // Left leg
+          momObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 5) * 0.5; // Right leg
+      }
+      if (dadObject && currentEnvironment === "home") {
+          dadObject.position.x -= Math.sin(clock.getElapsedTime() * 0.4) * 0.01;
+          dadObject.position.z += Math.cos(clock.getElapsedTime() * 0.4) * 0.01;
+          // Simple "walking" animation for placeholder model
+          dadObject.children[3].rotation.x = Math.sin(clock.getElapsedTime() * 4) * 0.5; // Left arm
+          dadObject.children[4].rotation.x = -Math.sin(clock.getElapsedTime() * 4) * 0.5; // Right arm
+          dadObject.children[5].rotation.x = -Math.sin(clock.getElapsedTime() * 4) * 0.5; // Left leg
+          dadObject.children[6].rotation.x = Math.sin(clock.getElapsedTime() * 4) * 0.5; // Right leg
       }
 
 
@@ -842,7 +862,7 @@
       job: "İşsiz",
       psychologicalHealth: 100, // Max 100, lower is worse
       curseCount: 0,
-      psychologistBanUntil: 0, // Year when ban lifts
+      psychologistBanUntil: 0, // Age when ban lifts (in years, not months)
       hasPubertyAcne: false,
       hasBodyHair: false,
       playerClothesColor: 0x6495ED, // Initial clothes color
@@ -877,7 +897,7 @@
 
       document.getElementById("cry").play();
       document.getElementById("ui").style.display = "none";
-      gameControls.style.display = "flex"; // Show joystick controls
+      // gameControls.style.display = "flex"; // Show joystick controls AFTER birth/home scene
 
       if (player.disease === "kör") {
         renderer.setClearColor(0x000000); // Black screen for blindness
@@ -907,6 +927,7 @@
       createHomeScene();
       player.age = 0;
       updateInfo();
+      gameControls.style.display = "flex"; // Show joystick controls after spawning at home
 
       // Create siblings with a chance
       if (Math.random() < 0.6) { // 60% chance to have a sibling
@@ -1090,7 +1111,7 @@
       } else if (player.age === 18 && player.educationLevel === "Lise") {
         showEvent("Lise Bitti!", "Üniversiteye gitmek ister misin? (Sınav var!)", [
           { text: "Evet, sınava gir", action: () => { takeUniversityExam(); } },
-          { text: "Hayır, direkt iş hayatına atıl", action: ()소를: () => { player.job = "Niteliksiz İşçi"; player.money += 500; speakText("Üniversiteye gitmeyi tercih etmedin. İş hayatına atıldın."); createCityScene(); } }
+          { text: "Hayır, direkt iş hayatına atıl", action: () => { player.job = "Niteliksiz İşçi"; player.money += 500; speakText("Üniversiteye gitmeyi tercih etmedin. İş hayatına atıldın."); createCityScene(); } }
         ]);
       }
 
@@ -1182,8 +1203,8 @@
     function startUniversityExam() {
       examScore = 0;
       cheatAttempted = false;
-      if (player.psychologistBanUntil > player.year + player.age) {
-          showEvent("Sınav Yasağı!", `Psikologdan atıldığın için ${player.psychologistBanUntil - player.age} yaşına kadar sınava giremezsin!`, [ // Yaşına göre ban yılını göster
+      if (player.psychologistBanUntil > player.age) { // Compare with age directly
+          showEvent("Sınav Yasağı!", `Psikologdan atıldığın için ${Math.round(player.psychologistBanUntil - player.age)} yıl daha sınava giremezsin!`, [ // Yaşına göre ban yılını göster
               { text: "Pekala", action: () => { createCityScene(); } }
           ]);
           return;
@@ -1227,7 +1248,7 @@
             { text: "Eyvah!", action: () => {
                 cheatAttempted = true;
                 const banYears = Math.floor(Math.random() * 3) + 1; // 1 to 3 years ban
-                player.psychologistBanUntil = player.year + player.age + banYears; // Using this property for exam ban
+                player.psychologistBanUntil = player.age + banYears; // Using this property for exam ban
                 player.karma -= 20; // Karma düşüşü
                 finishExam(); // End exam prematurely
               }
@@ -1243,7 +1264,7 @@
 
       function finishExam() {
         if (cheatAttempted) {
-          showEvent("Sınav Sonucu", `Kopya nedeniyle sınavın iptal edildi. ${player.psychologistBanUntil - (player.year + player.age)} yıl sınava giremezsin.`, [
+          showEvent("Sınav Sonucu", `Kopya nedeniyle sınavın iptal edildi. ${Math.round(player.psychologistBanUntil - player.age)} yıl sınava giremezsin.`, [
             { text: "Pekala", action: () => { player.educationLevel = "Lise Mezunu"; createCityScene(); } }
           ]);
           speakText(`Kopya nedeniyle sınavın iptal edildi.`);
@@ -1646,7 +1667,7 @@
     // --- Psychologist Functions ---
     function goToPsychologist() {
       if (player.psychologistBanUntil > player.age) { // Compare with age directly
-        showEvent("Psikolog Yasağı", `Küfür ettiğin için ${player.psychologistBanUntil - player.age} ay daha psikologdan yardım alamazsın.`, [
+        showEvent("Psikolog Yasağı", `Küfür ettiğin için ${Math.round((player.psychologistBanUntil - player.age) * 12)} ay daha psikologdan yardım alamazsın.`, [
           { text: "Anladım", action: () => { createCityScene(); } }
         ]);
         return;
@@ -1722,67 +1743,109 @@
 
 
     // --- Game Controls (Joystick-like) ---
+    let movementInterval; // To hold the interval for continuous movement
+
+    function startMovement(direction) {
+        stopMovement(); // Stop any existing movement first
+
+        const movePlayerFunc = () => {
+            const rotationSpeed = 0.05;
+            let moveSpeed = isRunning ? 0.2 : 0.1; // Base speed
+
+            if (!playerObject) return;
+
+            switch (direction) {
+                case 'forward':
+                    playerObject.position.x += Math.sin(playerObject.rotation.y) * moveSpeed;
+                    playerObject.position.z += Math.cos(playerObject.rotation.y) * moveSpeed;
+                    isMovingForward = true;
+                    break;
+                case 'back':
+                    playerObject.position.x -= Math.sin(playerObject.rotation.y) * moveSpeed;
+                    playerObject.position.z -= Math.cos(playerObject.rotation.y) * moveSpeed;
+                    isMovingBack = true;
+                    break;
+                case 'left':
+                    playerObject.rotation.y += rotationSpeed;
+                    isTurningLeft = true;
+                    break;
+                case 'right':
+                    playerObject.rotation.y -= rotationSpeed;
+                    isTurningRight = true;
+                    break;
+            }
+        };
+
+        // Execute immediately and then repeatedly
+        movePlayerFunc();
+        movementInterval = setInterval(movePlayerFunc, 1000 / 60); // Roughly 60 FPS update for smooth movement
+    }
+
+    function stopMovement() {
+        clearInterval(movementInterval);
+        isMovingForward = false;
+        isMovingBack = false;
+        isTurningLeft = false;
+        isTurningRight = false;
+    }
+
     // Keyboard listener for WASD movement
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'w' || event.key === 'W') movePlayer('forward');
-        if (event.key === 's' || event.key === 'S') movePlayer('back');
-        if (event.key === 'a' || event.key === 'A') movePlayer('left');
-        if (event.key === 'd' || event.key === 'D') movePlayer('right');
-    });
-    // Stop animation when key is released (simplified for this example)
-    document.addEventListener('keyup', (event) => {
-        if (event.key === 'w' || event.key === 'W' || event.key === 's' || event.key === 'S') {
-            isWalking = false;
-            isRunning = false;
+        if (!playerObject || eventOverlay.style.display === "flex" || psychologistOverlay.style.display === "flex" || shopOverlay.style.display === "flex") {
+            return; // Don't move if UI overlay is active
+        }
+
+        switch (event.key) {
+            case 'w':
+            case 'W':
+                if (!isMovingForward) startMovement('forward');
+                break;
+            case 's':
+            case 'S':
+                if (!isMovingBack) startMovement('back');
+                break;
+            case 'a':
+            case 'A':
+                if (!isTurningLeft) startMovement('left');
+                break;
+            case 'd':
+            case 'D':
+                if (!isTurningRight) startMovement('right');
+                break;
+            case 'Shift': // Sprinting
+                isRunning = true;
+                break;
         }
     });
 
-    function movePlayer(direction) {
-      const rotationSpeed = 0.05;
-      let moveSpeed = 0.1; // Base speed
+    document.addEventListener('keyup', (event) => {
+        switch (event.key) {
+            case 'w':
+            case 'W':
+                isMovingForward = false;
+                if (!isMovingBack && !isTurningLeft && !isTurningRight) stopMovement();
+                break;
+            case 's':
+            case 'S':
+                isMovingBack = false;
+                if (!isMovingForward && !isTurningLeft && !isTurningRight) stopMovement();
+                break;
+            case 'a':
+            case 'A':
+                isTurningLeft = false;
+                if (!isMovingForward && !isMovingBack && !isTurningRight) stopMovement();
+                break;
+            case 'd':
+            case 'D':
+                isTurningRight = false;
+                if (!isMovingForward && !isMovingBack && !isTurningLeft) stopMovement();
+                break;
+            case 'Shift':
+                isRunning = false;
+                break;
+        }
+    });
 
-      if (!playerObject) return;
-
-      if (isRunning) moveSpeed = 0.2; // Increase speed if running
-
-      switch (direction) {
-        case 'forward':
-          playerObject.position.x += Math.sin(playerObject.rotation.y) * moveSpeed;
-          playerObject.position.z += Math.cos(playerObject.rotation.y) * moveSpeed;
-          break;
-        case 'back':
-          playerObject.position.x -= Math.sin(playerObject.rotation.y) * moveSpeed;
-          playerObject.position.z -= Math.cos(playerObject.rotation.y) * moveSpeed;
-          break;
-        case 'left':
-          playerObject.rotation.y += rotationSpeed;
-          break;
-        case 'right':
-          playerObject.rotation.y -= rotationSpeed;
-          break;
-      }
-      isWalking = true; // Any movement sets to walking
-    }
-
-    function toggleWalkAnimation() {
-      isWalking = !isWalking;
-      isRunning = false; // Cannot walk and run at same time
-      // For GLTF models:
-      // if (mixerPlayer) {
-      //   const walkClip = mixerPlayer.clipAction(playerObject.animations.find(a => a.name === 'walk'));
-      //   if (isWalking) { walkClip.play(); } else { walkClip.stop(); }
-      // }
-    }
-
-    function toggleRunAnimation() {
-      isRunning = !isRunning;
-      isWalking = false; // Cannot walk and run at same time
-      // For GLTF models:
-      // if (mixerPlayer) {
-      //   const runClip = mixerPlayer.clipAction(playerObject.animations.find(a => a.name === 'run'));
-      //   if (isRunning) { runClip.play(); } else { runClip.stop(); }
-      // }
-    }
 
     function endGame() {
       clearInterval(ageInterval);
